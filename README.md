@@ -16,10 +16,9 @@ python3 -m http.server 8080
 ### Navigation
 
 - **Tabs** — filter by crystal slot: Weapon, Armor, Additional, Special, Normal
-- **Show Enhancers toggle** — show or hide enhancer crystals alongside their base type in the same tab
 - **Search box** — filter crystals by name
 - **Stat chips** — click one or more stats to show only crystals that have those stats; click again to deselect
-- **Reset View** — re-fit the graph to the screen if you get lost
+- **⊡ Reset View** — return to the initial view for the current tab
 
 ### Reading the graph
 
@@ -33,6 +32,8 @@ python3 -m http.server 8080
 
 - **Hover** a node — tooltip shows full stats, drop sources, and maps.
 - **Click** a node — side panel shows full detail: all stats, every drop source, sell/process values, and a link to Coryn Club.
+- **Scroll** — pan up/down. **Drag** — pan freely.
+- **− / slider / +** (top-right of graph) — zoom out/in.
 - **Minimap** (bottom-left) — overview of the full graph. Click anywhere on it to jump to that area.
 - Nodes are fixed in place (not draggable) to keep the layout clean.
 

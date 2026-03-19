@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<link rel="icon" type="image/x-icon" href="fav.ico">
 <title>XPath — Xtal Upgrade Path</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -27,7 +28,7 @@
     display: flex; align-items: center; gap: 8px;
     padding: 0 12px; border-left: 1px solid #2a3f52; flex-shrink: 0;
   }
-  #tab-right h1 { font-size: 0.82rem; color: #2a3f52; white-space: nowrap; letter-spacing: 0.03em; }
+  #tab-right h1 { font-size: 0.82rem; color: #67b8df; white-space: nowrap; letter-spacing: 0.03em; }
   #search {
     background: #0f1722; border: 1px solid #2a3f52; color: #d9ebf8;
     padding: 4px 9px; border-radius: 6px; font-size: 0.82rem; width: 140px;
@@ -215,7 +216,8 @@
     <ul>
       <li><strong>Hover</strong> — quick stats + drops tooltip</li>
       <li><strong>Click</strong> — full detail in side panel</li>
-      <li><strong>Scroll</strong> zoom &nbsp;·&nbsp; <strong>Drag</strong> pan &nbsp;·&nbsp; <span class="key">Reset View</span> to re-center</li>
+      <li><strong>Scroll</strong> pan up/down &nbsp;·&nbsp; <strong>Drag</strong> pan freely</li>
+      <li><strong>− / slider / +</strong> to zoom &nbsp;·&nbsp; <span class="key">⊡</span> reset to initial view</li>
       <li>Minimap bottom-left — click to jump</li>
     </ul>
 
@@ -632,9 +634,22 @@ function renderGraph() {
 
   // zoom to first chain component on render
   cy.ready(() => {
+    // restack components vertically in longest-chain-first order
+    // dagre doesn't guarantee component order, so we enforce it manually
+    const COMP_GAP = 50;
+    let curY = 0;
+    comps.forEach(compIds => {
+      const compSet = new Set(compIds);
+      const compNodes = cy.nodes().filter(n => compSet.has(n.id()));
+      if (!compNodes.length) return;
+      const bb = compNodes.boundingBox();
+      const dy = curY - bb.y1;
+      if (Math.abs(dy) > 0.5) compNodes.forEach(n => n.position({ x: n.position("x"), y: n.position("y") + dy }));
+      curY += (bb.y2 - bb.y1) + COMP_GAP;
+    });
+
     const firstComp = comps[0] || [];
     if (firstComp.length) {
-      // fit to first 4 nodes of the longest chain for a readable entry view
       const peek = cy.nodes().filter(n => firstComp.slice(0, 4).includes(n.id()));
       cy.fit(peek.length ? peek : cy.nodes().slice(0, 4), 80);
       if (cy.zoom() > 1.4) cy.zoom(1.4);
@@ -662,11 +677,14 @@ function renderGraph() {
     const margin = 120;
     const p = cy.pan();
     const minX = margin - bb.x2 * zoom;
-    const maxX = cy.width() - margin - bb.x1 * zoom;
+    const maxX = cy.width()  - margin - bb.x1 * zoom;
+    const minY = margin - bb.y2 * zoom;
+    const maxY = cy.height() - margin - bb.y1 * zoom;
     const clampedX = Math.min(Math.max(p.x, minX), maxX);
-    if (clampedX !== p.x) {
+    const clampedY = Math.min(Math.max(p.y, minY), maxY);
+    if (clampedX !== p.x || clampedY !== p.y) {
       _panClamping = true;
-      cy.pan({ x: clampedX, y: p.y });
+      cy.pan({ x: clampedX, y: clampedY });
       _panClamping = false;
     }
     syncZoomSlider();
@@ -676,7 +694,7 @@ function renderGraph() {
   let _scrollVY = 0, _scrollRaf = null;
   document.getElementById("cy").addEventListener("wheel", e => {
     e.preventDefault();
-    _scrollVY += e.deltaY * 0.6;
+    _scrollVY += e.deltaY * 0.3;
     if (!_scrollRaf) tickScroll();
   }, { passive: false });
   function tickScroll() {
@@ -871,7 +889,7 @@ function syncZoomSlider() {
 function applyZoom(z) {
   if (!cy) return;
   const clamped = Math.min(Math.max(z, MIN_ZOOM), MAX_ZOOM);
-  cy.zoom({ level: clamped, renderedPosition: { x: cy.width() / 2, y: cy.height() / 2 } });
+  cy.animate({ zoom: { level: clamped, renderedPosition: { x: cy.width() / 2, y: cy.height() / 2 } }, duration: 250, easing: "ease-in-out-cubic" });
 }
 document.getElementById("zoom-slider").addEventListener("input", e => applyZoom(zoomFromSlider(+e.target.value)));
 document.getElementById("zoom-in-btn").addEventListener("click",  () => cy && applyZoom(cy.zoom() * 1.7));
