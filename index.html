@@ -510,21 +510,50 @@ function buildLabel(data) {
 function renderGraph() {
   const slot = SLOTS.find(s => s.key === activeSlot);
 
+  // slot filter first
   let primary = allNodes.filter(n => {
     const t = n.data.crysta_type;
-    // slot filter
     if (activeSlot !== "All") {
       if (t !== slot.base && t !== slot.enhancer) return false;
     }
-    // search
-    if (searchVal && !n.data.name.toLowerCase().includes(searchVal)) return false;
-    // stat filter: if any stats active, node must have at least one (OR logic)
-    if (activeStats.size > 0) {
-      const nodeStats = new Set((n.data.stats || []).map(s => s.stat));
-      if (![...activeStats].some(s => nodeStats.has(s))) return false;
-    }
     return true;
   });
+
+  // search: expand to full chain — any component containing a name-matched node is shown entirely
+  if (searchVal) {
+    const slotIds = new Set(primary.map(n => n.id));
+    const adj = {};
+    slotIds.forEach(id => adj[id] = []);
+    allEdges.forEach(e => {
+      if (slotIds.has(e.source) && slotIds.has(e.target)) {
+        adj[e.source].push(e.target);
+        adj[e.target].push(e.source);
+      }
+    });
+    const matched = new Set(primary.filter(n => n.data.name.toLowerCase().includes(searchVal)).map(n => n.id));
+    const keep = new Set();
+    matched.forEach(startId => {
+      if (keep.has(startId)) return;
+      const stack = [startId];
+      while (stack.length) {
+        const id = stack.pop();
+        if (keep.has(id)) continue;
+        keep.add(id);
+        (adj[id] || []).forEach(nb => { if (!keep.has(nb)) stack.push(nb); });
+      }
+    });
+    primary = primary.filter(n => keep.has(n.id));
+  }
+
+  const primaryForChips = primary.slice(); // snapshot before stat filter for chip building
+
+  // stat filter (individual node must match)
+  if (activeStats.size > 0) {
+    primary = primary.filter(n => {
+      const nodeStats = new Set((n.data.stats || []).map(s => s.stat));
+      return [...activeStats].some(s => nodeStats.has(s));
+    });
+  }
 
   // sort components by chain depth desc
   const primaryIds = primary.map(n => n.id);
@@ -710,15 +739,7 @@ function renderGraph() {
   cy.on("mousemove", "node", evt => moveTooltip(evt.originalEvent));
   cy.on("mouseout",  "node", () => hideTooltip());
 
-  // rebuild chips from current primary (before stat filter hides some)
-  // collect from all nodes matching slot+search but ignoring stat filter for chip list
-  const chipsBase = allNodes.filter(n => {
-    const t = n.data.crysta_type;
-    if (activeSlot !== "All") {
-      if (t !== slot.base && t !== slot.enhancer) return false;
-    }
-    return !searchVal || n.data.name.toLowerCase().includes(searchVal);
-  });
+  const chipsBase = primaryForChips;
   buildStatChips(chipsBase);
 }
 
