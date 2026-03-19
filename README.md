@@ -1,6 +1,10 @@
 # Toram Online — Crysta Upgrade Path Viewer
 
-A browser-based tool to explore crystal upgrade paths from [Coryn Club](https://coryn.club), built from scraped item data.
+A browser-based tool to explore crystal upgrade paths from [Coryn Club](https://coryn.club).
+
+Alternatively, you can check at [RaffyDB](https://raffydb.com/)
+
+View page at https://trgsatrgsa.github.io/xpath/
 
 ---
 
