@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Crysta Upgrade Path</title>
+<title>XPath — Xtal Upgrade Path</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: sans-serif; background: #0f1722; color: #d9ebf8; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
@@ -90,21 +90,130 @@
   .prop-row { font-size: 0.81rem; display: flex; justify-content: space-between; }
   .prop-row span:first-child { color: #52636d; }
   #placeholder { color: #52636d; font-size: 0.83rem; margin-top: 28px; text-align: center; }
+
+  /* help button */
+  #help-btn {
+    background: none; border: 1px solid #2a3f52; color: #52636d;
+    width: 26px; height: 26px; border-radius: 50%; cursor: pointer;
+    font-size: 0.82rem; font-weight: 700; flex-shrink: 0; transition: all 0.12s;
+  }
+  #help-btn:hover { border-color: #67b8df; color: #67b8df; }
+
+  /* modal overlay */
+  #help-modal {
+    display: none; position: fixed; inset: 0; z-index: 200;
+    background: rgba(0,0,0,0.65); align-items: center; justify-content: center;
+  }
+  #help-modal.open { display: flex; }
+  #help-box {
+    background: #17212d; border: 1px solid #2a3f52; border-radius: 12px;
+    padding: 24px 28px; max-width: 520px; width: 92%; max-height: 85vh;
+    overflow-y: auto; position: relative; color: #d9ebf8;
+  }
+  #help-box h2 { font-size: 1.1rem; color: #67b8df; margin-bottom: 4px; }
+  #help-box .subtitle { font-size: 0.78rem; color: #52636d; margin-bottom: 18px; }
+  #help-box h3 { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.08em; color: #52636d; margin: 16px 0 6px; }
+  #help-box p, #help-box li { font-size: 0.83rem; line-height: 1.65; color: #b0c8d8; }
+  #help-box ul { padding-left: 16px; display: flex; flex-direction: column; gap: 4px; }
+  #help-box .key {
+    display: inline-block; background: #1e3447; border: 1px solid #2a3f52;
+    border-radius: 4px; padding: 0 6px; font-size: 0.75rem; color: #d9ebf8;
+    font-family: monospace; white-space: nowrap;
+  }
+  #help-box .legend-row { display: flex; align-items: center; gap: 8px; margin: 4px 0; font-size: 0.82rem; color: #b0c8d8; }
+  #help-box .swatch { width: 32px; height: 14px; border-radius: 3px; flex-shrink: 0; }
+  #help-box .swatch.dashed { background: #111d2b; border: 2px dashed; border-radius: 3px; }
+  #help-close {
+    position: absolute; top: 14px; right: 16px;
+    background: none; border: none; color: #52636d; font-size: 1.2rem; cursor: pointer; line-height: 1;
+  }
+  #help-close:hover { color: #d9ebf8; }
+  #help-box .footer-note { margin-top: 18px; font-size: 0.72rem; color: #52636d; border-top: 1px solid #1e3447; padding-top: 10px; }
+
+  /* tooltip */
+  #cy-tooltip {
+    position: fixed;
+    pointer-events: none;
+    z-index: 100;
+    background: #17212d;
+    border: 1px solid #2a3f52;
+    border-radius: 8px;
+    padding: 10px 12px;
+    min-width: 180px;
+    max-width: 260px;
+    font-size: 0.78rem;
+    line-height: 1.5;
+    color: #d9ebf8;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.5);
+    display: none;
+  }
+  #cy-tooltip h4 { font-size: 0.82rem; color: #67b8df; margin-bottom: 4px; }
+  #cy-tooltip .tt-type { font-size: 0.68rem; font-weight: 700; padding: 1px 6px; border-radius: 3px; display: inline-block; margin-bottom: 6px; }
+  #cy-tooltip .tt-stat { display: flex; justify-content: space-between; gap: 12px; border-bottom: 1px solid #1e3447; padding: 2px 0; }
+  #cy-tooltip .tt-stat .tv { font-weight: 700; white-space: nowrap; }
+  #cy-tooltip .tt-stat .tv.neg { color: #f48a8a; }
+  #cy-tooltip .tt-stat .tv.pos { color: #7ee8a2; }
+  #cy-tooltip .tt-sep { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.08em; color: #52636d; margin: 5px 0 3px; }
+  #cy-tooltip .tt-drop { color: #8aa8ba; }
+  #cy-tooltip .tt-map { color: #67b8df; font-size: 0.74rem; }
 </style>
 </head>
 <body>
 
 <div id="topbar">
-  <h1>⬡ Crysta Upgrade Path</h1>
+  <h1>⬡ XPath</h1>
   <input id="search" type="text" placeholder="Search name...">
   <label id="enhancer-toggle"><input type="checkbox" id="show-enhancer" checked> Show Enhancers</label>
   <button id="fit-btn">⊡ Reset View</button>
   <span id="node-count"></span>
+  <button id="help-btn" title="How to use">?</button>
 </div>
 
 <div id="legend"></div>
 <div id="tabs"></div>
 <div id="stat-filter-bar"><span class="filter-label">Stats:</span></div>
+
+<div id="cy-tooltip"></div>
+
+<div id="help-modal">
+  <div id="help-box">
+    <button id="help-close" title="Close">×</button>
+    <h2>XPath</h2>
+    <p class="subtitle">Xtal Upgrade Path Viewer — Toram Online</p>
+
+    <h3>Browsing crystals</h3>
+    <ul>
+      <li>Use the <span class="key">tabs</span> at the top to switch between crystal slots — Weapon, Armor, Additional, Special, Normal.</li>
+      <li>Toggle <span class="key">Show Enhancers</span> to include or hide enhancer crystals within the same tab.</li>
+      <li>Type in the <span class="key">search box</span> to filter crystals by name.</li>
+      <li>Click a <span class="key">stat chip</span> below the tabs to show only crystals that carry that stat. You can select multiple chips at once.</li>
+    </ul>
+
+    <h3>Reading the graph</h3>
+    <ul>
+      <li>Arrows show the upgrade direction — from a crystal to what it becomes.</li>
+      <li>Crystals in longer upgrade chains appear first (top of the graph).</li>
+    </ul>
+    <div class="legend-row"><span class="swatch" style="background:#e07b39"></span> Solid node — base crystal</div>
+    <div class="legend-row"><span class="swatch dashed" style="border-color:#e07b39"></span> Dashed node — enhancer crystal (same slot, different tier)</div>
+    <div class="legend-row"><span class="swatch" style="background:#2a3f52;opacity:0.4"></span> Faded dotted — upgrade target from a different slot (shown to keep arrow intact)</div>
+
+    <h3>Getting details</h3>
+    <ul>
+      <li><strong>Hover</strong> a crystal — tooltip shows all stats and drop sources inline.</li>
+      <li><strong>Click</strong> a crystal — side panel shows full details including sell value, process material, and a direct link to Coryn Club.</li>
+    </ul>
+
+    <h3>Navigation</h3>
+    <ul>
+      <li><span class="key">Reset View</span> button — bring everything back into view if you get lost.</li>
+      <li><span class="key">Minimap</span> (bottom-left corner) — overview of the full graph. Click anywhere on it to jump there.</li>
+      <li>Scroll to zoom, drag the background to pan.</li>
+    </ul>
+
+    <p class="footer-note">XPath — Xtal Upgrade Path &nbsp;|&nbsp; Data sourced from <a href="https://coryn.club" target="_blank" style="color:#67b8df">coryn.club</a> &nbsp;|&nbsp; Licensed under GPL-2.0</p>
+  </div>
+</div>
 
 <div id="main">
   <div id="cy"></div>
@@ -452,7 +561,8 @@ function renderGraph() {
         }
       }
     ],
-    layout: { name: "dagre", rankDir: "LR", nodeSep: 28, rankSep: 90, animate: false }
+    layout: { name: "dagre", rankDir: "LR", nodeSep: 28, rankSep: 90, animate: false },
+    autoungrabify: true,   // nodes not draggable
   });
 
   // zoom to first chain component on render
@@ -468,9 +578,12 @@ function renderGraph() {
     drawMinimap();
   });
 
-  cy.on("tap", "node", evt => showPanel(evt.target.data()));
+  cy.on("tap", "node", evt => { hideTooltip(); showPanel(evt.target.data()); });
   cy.on("tap", evt => { if (evt.target === cy) clearPanel(); });
   cy.on("viewport render", drawMinimap);
+  cy.on("mouseover", "node", evt => showTooltip(evt.target.data(), evt.originalEvent));
+  cy.on("mousemove", "node", evt => moveTooltip(evt.originalEvent));
+  cy.on("mouseout",  "node", () => hideTooltip());
 
   // rebuild chips from current primary (before stat filter hides some)
   // collect from all nodes matching slot+search but ignoring stat filter for chip list
@@ -544,6 +657,51 @@ document.getElementById("minimap-wrap").addEventListener("click", e => {
   cy.animate({ pan: { x: cy.width() / 2 - worldX * cy.zoom(), y: cy.height() / 2 - worldY * cy.zoom() }, duration: 200 });
 });
 
+/* ── tooltip ── */
+const _tt = document.getElementById("cy-tooltip");
+
+function showTooltip(data, mouseEvt) {
+  const color = slotOf(data.crysta_type).color;
+  let html = `<h4>${data.name}</h4>`;
+  html += `<span class="tt-type" style="background:${color}22;color:${color};border:1px solid ${color}44">${data.crysta_type || "?"}</span>`;
+
+  if (data.stats && data.stats.length) {
+    html += `<div class="tt-sep">Stat / Effect</div>`;
+    data.stats.forEach(s => {
+      const v = parseFloat(s.amount);
+      const cls = v > 0 ? "pos" : v < 0 ? "neg" : "";
+      const sign = v > 0 ? "+" : "";
+      html += `<div class="tt-stat"><span>${s.stat}</span><span class="tv ${cls}">${sign}${s.amount}</span></div>`;
+    });
+  }
+
+  if (data.drop_sources && data.drop_sources.length) {
+    html += `<div class="tt-sep">Obtained From</div>`;
+    data.drop_sources.slice(0, 4).forEach(d => {
+      html += `<div class="tt-drop">${d.monster || "?"}${d.level ? ` (Lv ${d.level})` : ""}</div>`;
+      html += `<div class="tt-map">${d.map || "?"}</div>`;
+    });
+    if (data.drop_sources.length > 4)
+      html += `<div style="color:#52636d;font-size:0.7rem">+${data.drop_sources.length - 4} more…</div>`;
+  }
+
+  _tt.innerHTML = html;
+  _tt.style.display = "block";
+  moveTooltip(mouseEvt);
+}
+
+function moveTooltip(e) {
+  const pad = 14;
+  const tw = _tt.offsetWidth, th = _tt.offsetHeight;
+  let x = e.clientX + pad, y = e.clientY + pad;
+  if (x + tw > window.innerWidth  - 8) x = e.clientX - tw - pad;
+  if (y + th > window.innerHeight - 8) y = e.clientY - th - pad;
+  _tt.style.left = x + "px";
+  _tt.style.top  = y + "px";
+}
+
+function hideTooltip() { _tt.style.display = "none"; }
+
 /* ── side panel ── */
 function showPanel(data) {
   const color = slotOf(data.crysta_type).color;
@@ -597,6 +755,9 @@ function clearPanel() {
 }
 
 document.getElementById("fit-btn").addEventListener("click", () => cy && cy.fit(undefined, 40));
+document.getElementById("help-btn").addEventListener("click", () => document.getElementById("help-modal").classList.add("open"));
+document.getElementById("help-close").addEventListener("click", () => document.getElementById("help-modal").classList.remove("open"));
+document.getElementById("help-modal").addEventListener("click", e => { if (e.target === e.currentTarget) e.currentTarget.classList.remove("open"); });
 document.getElementById("search").addEventListener("input", e => { searchVal = e.target.value.toLowerCase(); renderGraph(); clearPanel(); });
 document.getElementById("show-enhancer").addEventListener("change", () => { renderGraph(); clearPanel(); });
 

@@ -1,29 +1,53 @@
-# Coryn Club Item Scraper
+# Toram Online — Crysta Upgrade Path Viewer
 
-## Files
+A browser-based tool to explore crystal upgrade paths from [Coryn Club](https://coryn.club), built from scraped item data.
 
-| File | Purpose |
-|------|---------|
-| `download_toram.sh` | Download HTML pages (p=0 to p=43) into `html_pages/` |
-| `parse_items.py` | Parse all HTML pages into `items.db` (SQLite) |
-| `export_crysta.py` | Export crystal upgrade graph as JSON for xyflow |
+---
 
-## Usage
+## Viewer (`index.html`)
+
+Open with a local server — `fetch()` requires HTTP, not `file://`:
 
 ```bash
-# 1. Download pages
-bash download_toram.sh
-
-# 2. Parse into DB
-pip install beautifulsoup4
-python parse_items.py
-
-# 3. Export crystal graph
-python export_crysta.py
-# -> crysta_graph.json
+python3 -m http.server 8080
+# then open http://localhost:8080
 ```
 
-## DB Schema
+### Navigation
+
+- **Tabs** — filter by crystal slot: Weapon, Armor, Additional, Special, Normal
+- **Show Enhancers toggle** — show or hide enhancer crystals alongside their base type in the same tab
+- **Search box** — filter crystals by name
+- **Stat chips** — click one or more stats to show only crystals that have those stats; click again to deselect
+- **Reset View** — re-fit the graph to the screen if you get lost
+
+### Reading the graph
+
+- Each box is one crystal. Arrows point from a crystal to what it upgrades into.
+- **Solid filled** node = base crystal. **Dark with dashed border** = enhancer crystal (same slot, different tier).
+- **Faded dotted** node = upgrade target from a different slot type (shown so the arrow doesn't dangle).
+- Longest upgrade chains appear first in the layout.
+- Node shows: crystal name / abbreviated stats / map where it drops.
+
+### Interacting
+
+- **Hover** a node — tooltip shows full stats, drop sources, and maps.
+- **Click** a node — side panel shows full detail: all stats, every drop source, sell/process values, and a link to Coryn Club.
+- **Minimap** (bottom-left) — overview of the full graph. Click anywhere on it to jump to that area.
+- Nodes are fixed in place (not draggable) to keep the layout clean.
+
+---
+
+## Planned
+
+- **Event crystal separation** — event-obtained crystals flagged and filterable separately
+- **Enhancer path fix** — broken upgrade links between base and enhancer crystals resolved
+
+---
+
+## Developer
+
+### DB schema
 
 ```
 items         (id, name, type, item_url, image_url, sell_amount, sell_unit, process_amount, process_type)
@@ -33,39 +57,28 @@ used_for      (item_id, category, target_name, target_id, note)
 parse_errors  (page, item_id, item_name, section, error)
 ```
 
-## Example Queries
+### Useful queries
 
 ```sql
--- All crystal types available
+-- All crystal types in DB
 SELECT DISTINCT type FROM items WHERE type LIKE '%Crysta%';
 
--- All weapon crystas with ATK% buff
+-- Weapon crystas with ATK% buff, sorted highest first
 SELECT i.name, s.stat_name, s.amount
 FROM items i JOIN item_stats s ON i.id = s.item_id
 WHERE i.type = 'Weapon Crysta' AND s.stat_name LIKE 'ATK%'
 ORDER BY CAST(s.amount AS REAL) DESC;
 
--- Upgrade path for a specific crystal
-SELECT i.name AS "from", uf.target_name AS "upgrades into", uf.category
+-- Full upgrade chain
+SELECT i.name AS "from", uf.target_name AS "upgrades into"
 FROM items i JOIN used_for uf ON i.id = uf.item_id
 WHERE i.type LIKE '%Crysta%' AND uf.category = 'Upgrade Into';
 
--- Where to farm a specific item
+-- Where to farm a specific item (use item id)
 SELECT monster_name, monster_level, map_name
 FROM drop_sources WHERE item_id = 4352;
 
--- Items that can be farmed from a specific map
-SELECT DISTINCT i.name, i.type
-FROM items i JOIN drop_sources d ON i.id = d.item_id
-WHERE d.map_name LIKE '%Aulada%';
-
--- Most versatile crystas (used in most upgrade paths)
-SELECT i.name, i.type, COUNT(*) AS upgrade_count
-FROM items i JOIN used_for uf ON i.id = uf.item_id
-WHERE i.type LIKE '%Crysta%' AND uf.category = 'Upgrade Into'
-GROUP BY i.id ORDER BY upgrade_count DESC LIMIT 20;
-
--- Crystas with negative stats (trade-off builds)
+-- All crystas with a negative stat (trade-off builds)
 SELECT i.name, s.stat_name, s.amount
 FROM items i JOIN item_stats s ON i.id = s.item_id
 WHERE i.type LIKE '%Crysta%' AND CAST(s.amount AS REAL) < 0;
