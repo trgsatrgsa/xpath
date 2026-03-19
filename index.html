@@ -86,12 +86,12 @@
 
   #minimap-wrap {
     position: absolute; bottom: 14px; left: 14px;
-    width: 170px; height: 120px;
+    width: 160px; height: 120px;
     background: rgba(15,23,34,0.92); border: 1px solid #2a3f52;
     border-radius: 8px; overflow: hidden; cursor: crosshair;
     z-index: 10;
   }
-  #minimap { width: 170px; height: 120px; display: block; }
+  #minimap { width: 160px; height: 120px; display: block; }
 
   #panel {
     width: 270px; background: #17212d; border-left: 1px solid #2a3f52;
@@ -723,26 +723,32 @@ function renderGraph() {
 }
 
 /* ── minimap ── */
+const MM_W = 160, MM_H = 120, MM_PAD = 3;
+
+function minimapScale(bb) {
+  return Math.min((MM_W - MM_PAD * 2) / bb.w, (MM_H - MM_PAD * 2) / bb.h);
+}
+
 function drawMinimap() {
   if (!cy) return;
   const canvas = document.getElementById("minimap");
-  const W = 170, H = 120;
-  canvas.width = W; canvas.height = H;
-  const ctx = canvas.getContext("2d");
-  ctx.clearRect(0, 0, W, H);
-
   const bb = cy.elements().boundingBox();
   if (!bb || !bb.w) return;
-  const pad = 3;
-  const s = Math.min((W - pad * 2) / bb.w, (H - pad * 2) / bb.h);
+
+  const s = minimapScale(bb);
+  const W = MM_W, H = MM_H;
+  canvas.width = W; canvas.height = H;
+
+  const ctx = canvas.getContext("2d");
+  ctx.clearRect(0, 0, W, H);
 
   // edges
   ctx.strokeStyle = "#2a3f52"; ctx.lineWidth = 0.5;
   cy.edges().forEach(e => {
     const sp = e.source().position(), tp = e.target().position();
     ctx.beginPath();
-    ctx.moveTo((sp.x - bb.x1) * s + pad, (sp.y - bb.y1) * s + pad);
-    ctx.lineTo((tp.x - bb.x1) * s + pad, (tp.y - bb.y1) * s + pad);
+    ctx.moveTo((sp.x - bb.x1) * s + MM_PAD, (sp.y - bb.y1) * s + MM_PAD);
+    ctx.lineTo((tp.x - bb.x1) * s + MM_PAD, (tp.y - bb.y1) * s + MM_PAD);
     ctx.stroke();
   });
 
@@ -750,19 +756,21 @@ function drawMinimap() {
   cy.nodes().forEach(n => {
     ctx.globalAlpha = n.data("stub") ? 0.25 : (n.data("enhancer") ? 0.55 : 0.9);
     ctx.fillStyle = n.data("slot_color") || "#67b8df";
-    const x = (n.position("x") - bb.x1) * s + pad;
-    const y = (n.position("y") - bb.y1) * s + pad;
+    const x = (n.position("x") - bb.x1) * s + MM_PAD;
+    const y = (n.position("y") - bb.y1) * s + MM_PAD;
     ctx.fillRect(x - 4, y - 2, 9, 4);
     ctx.globalAlpha = 1;
   });
 
-  // viewport rect
+  // viewport rect — enforce a minimum visible size
   const pan = cy.pan(), zoom = cy.zoom();
-  const vx = (-pan.x / zoom - bb.x1) * s + pad;
-  const vy = (-pan.y / zoom - bb.y1) * s + pad;
-  const vw = (cy.width() / zoom) * s;
-  const vh = (cy.height() / zoom) * s;
-  ctx.strokeStyle = "#67b8df"; ctx.lineWidth = 1; ctx.globalAlpha = 0.85;
+  const vx = (-pan.x / zoom - bb.x1) * s + MM_PAD;
+  const vy = (-pan.y / zoom - bb.y1) * s + MM_PAD;
+  const vw = Math.max((cy.width()  / zoom) * s, 14);
+  const vh = Math.max((cy.height() / zoom) * s, 10);
+  ctx.strokeStyle = "#67b8df"; ctx.lineWidth = 1.5; ctx.globalAlpha = 0.9;
+  ctx.fillStyle = "rgba(103,184,223,0.08)";
+  ctx.fillRect(vx, vy, vw, vh);
   ctx.strokeRect(vx, vy, vw, vh);
   ctx.globalAlpha = 1;
 }
@@ -773,10 +781,9 @@ document.getElementById("minimap-wrap").addEventListener("click", e => {
   const mx = e.clientX - rect.left, my = e.clientY - rect.top;
   const bb = cy.elements().boundingBox();
   if (!bb || !bb.w) return;
-  const pad = 3;
-  const s = Math.min((170 - pad * 2) / bb.w, (120 - pad * 2) / bb.h);
-  const worldX = (mx - pad) / s + bb.x1;
-  const worldY = (my - pad) / s + bb.y1;
+  const s = minimapScale(bb);
+  const worldX = (mx - MM_PAD) / s + bb.x1;
+  const worldY = (my - MM_PAD) / s + bb.y1;
   cy.animate({ pan: { x: cy.width() / 2 - worldX * cy.zoom(), y: cy.height() / 2 - worldY * cy.zoom() }, duration: 200 });
 });
 
