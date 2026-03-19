@@ -564,7 +564,7 @@ function renderGraph() {
   cy = cytoscape({
     container: document.getElementById("cy"),
     elements,
-    minZoom: 0.12, maxZoom: 3,
+    minZoom: 0.5, maxZoom: 3,
     style: [
       {
         selector: "node",
@@ -639,6 +639,27 @@ function renderGraph() {
   cy.on("tap", "node", evt => { hideTooltip(); showPanel(evt.target.data()); });
   cy.on("tap", evt => { if (evt.target === cy) clearPanel(); });
   cy.on("viewport render", drawMinimap);
+
+  // clamp horizontal pan to node extents; vertical is free
+  let _panClamping = false;
+  cy.on("pan zoom", () => {
+    if (_panClamping) return;
+    const vis = cy.nodes(":visible");
+    if (!vis.length) return;
+    const bb = vis.boundingBox();
+    const zoom = cy.zoom();
+    const margin = 120;
+    const p = cy.pan();
+    const minX = margin - bb.x2 * zoom;
+    const maxX = cy.width() - margin - bb.x1 * zoom;
+    const clampedX = Math.min(Math.max(p.x, minX), maxX);
+    if (clampedX !== p.x) {
+      _panClamping = true;
+      cy.pan({ x: clampedX, y: p.y });
+      _panClamping = false;
+    }
+  });
+
   cy.on("mouseover", "node", evt => showTooltip(evt.target.data(), evt.originalEvent));
   cy.on("mousemove", "node", evt => moveTooltip(evt.originalEvent));
   cy.on("mouseout",  "node", () => hideTooltip());
