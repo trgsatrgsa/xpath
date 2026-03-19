@@ -7,7 +7,6 @@
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: sans-serif; background: #0f1722; color: #d9ebf8; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
 
-  /* top bar */
   #topbar {
     display: flex; align-items: center; gap: 10px;
     padding: 7px 12px; background: #17212d;
@@ -27,7 +26,6 @@
   #enhancer-toggle input { cursor: pointer; accent-color: #67b8df; }
   #node-count { font-size: 0.75rem; color: #52636d; margin-left: auto; white-space: nowrap; }
 
-  /* legend */
   #legend {
     display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
     padding: 4px 12px; background: #17212d; border-bottom: 1px solid #2a3f52; flex-shrink: 0;
@@ -36,7 +34,6 @@
   .legend-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
   .legend-enh { width: 9px; height: 9px; border-radius: 2px; border: 1.5px dashed; flex-shrink: 0; opacity: 0.7; }
 
-  /* tabs */
   #tabs {
     display: flex; gap: 2px; padding: 5px 12px 0;
     background: #17212d; border-bottom: 1px solid #2a3f52; overflow-x: auto; flex-shrink: 0;
@@ -50,36 +47,32 @@
   .tab.active { color: #fff; border-color: #2a3f52; border-bottom: 1px solid #17212d; background: #0f1722; }
   .tab .dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 4px; vertical-align: middle; }
 
-  /* stat filter chips */
   #stat-filter-bar {
     display: flex; gap: 5px; flex-wrap: wrap; align-items: center;
     padding: 5px 12px; background: #0f1722; border-bottom: 1px solid #1e3447;
-    flex-shrink: 0; max-height: 80px; overflow-y: auto;
+    flex-shrink: 0; max-height: 72px; overflow-y: auto;
   }
   #stat-filter-bar .filter-label { font-size: 0.7rem; color: #52636d; white-space: nowrap; }
   .stat-chip {
-    font-size: 0.72rem; padding: 2px 8px; border-radius: 10px;
+    font-size: 0.7rem; padding: 2px 7px; border-radius: 10px;
     border: 1px solid #2a3f52; color: #8aa8ba; cursor: pointer;
-    background: #17212d; white-space: nowrap; transition: all 0.1s;
-    user-select: none;
+    background: #17212d; white-space: nowrap; transition: all 0.1s; user-select: none;
   }
   .stat-chip:hover { border-color: #67b8df; color: #d9ebf8; }
   .stat-chip.active { background: #0c6f92; border-color: #67b8df; color: #fff; }
 
-  /* main */
   #main { display: flex; flex: 1; overflow: hidden; position: relative; }
   #cy { flex: 1; }
 
-  /* minimap */
   #minimap-wrap {
     position: absolute; bottom: 14px; left: 14px;
     width: 170px; height: 120px;
     background: rgba(15,23,34,0.92); border: 1px solid #2a3f52;
     border-radius: 8px; overflow: hidden; cursor: crosshair;
+    z-index: 10;
   }
   #minimap { width: 170px; height: 120px; display: block; }
 
-  /* side panel */
   #panel {
     width: 270px; background: #17212d; border-left: 1px solid #2a3f52;
     padding: 13px; overflow-y: auto; display: flex; flex-direction: column;
@@ -125,6 +118,7 @@
 <script>
 cytoscape.use(cytoscapeDagre);
 
+/* ── slot groups ── */
 const SLOTS = [
   { key: "All",        label: "All",        color: "#67b8df", base: null,                  enhancer: null },
   { key: "Weapon",     label: "Weapon",     color: "#e07b39", base: "Weapon Crysta",       enhancer: "Enhancer Crysta (Red)" },
@@ -138,14 +132,68 @@ SLOTS.forEach(s => { if (s.base) TYPE_TO_SLOT[s.base] = s; if (s.enhancer) TYPE_
 function slotOf(t) { return TYPE_TO_SLOT[t] || SLOTS[0]; }
 function isEnhancer(t) { return t && t.startsWith("Enhancer"); }
 
+/* ── stat abbreviation map ── */
+const STAT_SHORT = {
+  "Critical Rate":              "CR",
+  "Critical Rate %":            "CR%",
+  "MaxHP":                      "HP",
+  "MaxHP %":                    "HP%",
+  "MaxMP":                      "MP",
+  "MaxMP %":                    "MP%",
+  "Attack MP Recovery":         "AMPR",
+  "MP Recovery":                "MPR",
+  "Natural HP Recovery":        "NHPR",
+  "Natural MP Recovery":        "NMPR",
+  "Physical Resistance":        "P.Res",
+  "Magic Resistance":           "M.Res",
+  "Ailment Resistance":         "Ail.Res",
+  "Resistance":                 "Res",
+  "Attack Speed":               "ASPD",
+  "Motion Speed":               "MSPD",
+  "Unsheathe Attack":           "Unsheathe",
+  "Stability":                  "Stab",
+  "Accuracy":                   "Acc",
+  "Flee Rate":                  "Flee",
+  "Drop Rate":                  "Drop",
+  "Aggro":                      "Aggro",
+  "Smite":                      "Smite",
+  "Guard Break":                "GB",
+  "Guard Recharge":             "GR",
+  "HP Recovery":                "HPR",
+  "Long Range Damage":          "LRD",
+  "Short Range Damage":         "SRD",
+  "Strong":                     "Strong",
+  "Dex":                        "DEX",
+  "Str":                        "STR",
+  "Int":                        "INT",
+  "Vit":                        "VIT",
+  "Agi":                        "AGI",
+  "AGI":                        "AGI",
+  "AGI %":                      "AGI%",
+  "STR %":                      "STR%",
+  "INT %":                      "INT%",
+  "VIT %":                      "VIT%",
+  "DEX %":                      "DEX%",
+  "ATK %":                      "ATK%",
+  "MATK %":                     "MATK%",
+  "DEF %":                      "DEF%",
+  "MDEF %":                     "MDEF%",
+};
+function shortStat(stat) {
+  if (STAT_SHORT[stat]) return STAT_SHORT[stat];
+  // generic: strip " %" -> "%", keep as-is otherwise
+  return stat.replace(" %", "%");
+}
+
+/* ── state ── */
 let cy;
 let allNodes = [], allEdges = [], nodeById = {};
 let activeSlot = "All";
 let searchVal = "";
 let showEnhancers = true;
-let activeStats = new Set();  // selected stat filter chips
+let activeStats = new Set(); // full stat names
 
-/* ── data load ── */
+/* ── load ── */
 async function loadGraph() {
   const { nodes, edges } = await fetch("crysta_graph.json").then(r => r.json());
   allNodes = nodes; allEdges = edges;
@@ -154,7 +202,6 @@ async function loadGraph() {
   renderGraph();
 }
 
-/* ── legend ── */
 function buildLegend() {
   document.getElementById("legend").innerHTML = SLOTS.slice(1).map(s =>
     `<div class="legend-item"><span class="legend-dot" style="background:${s.color}"></span>${s.label} Base</div>` +
@@ -162,7 +209,6 @@ function buildLegend() {
   ).join("");
 }
 
-/* ── tabs ── */
 function buildTabs() {
   const bar = document.getElementById("tabs");
   SLOTS.forEach((s, i) => {
@@ -181,7 +227,7 @@ function buildTabs() {
   });
 }
 
-/* ── chain depth: longest path from each node ── */
+/* ── chain depth ── */
 function computeDepths(nodeIds, edges) {
   const nodeSet = new Set(nodeIds);
   const out = {};
@@ -190,7 +236,7 @@ function computeDepths(nodeIds, edges) {
   const memo = {};
   function dfs(id) {
     if (memo[id] !== undefined) return memo[id];
-    memo[id] = 0; // cycle guard
+    memo[id] = 0;
     const kids = out[id] || [];
     memo[id] = kids.length ? 1 + Math.max(...kids.map(dfs)) : 0;
     return memo[id];
@@ -206,16 +252,13 @@ function connectedComponents(nodeIds, edges) {
   nodeIds.forEach(id => adj[id] = []);
   edges.forEach(e => {
     if (nodeSet.has(e.source) && nodeSet.has(e.target)) {
-      adj[e.source].push(e.target);
-      adj[e.target].push(e.source);
+      adj[e.source].push(e.target); adj[e.target].push(e.source);
     }
   });
-  const visited = new Set();
-  const comps = [];
+  const visited = new Set(); const comps = [];
   nodeIds.forEach(id => {
     if (visited.has(id)) return;
-    const comp = [];
-    const stack = [id];
+    const comp = [], stack = [id];
     while (stack.length) {
       const n = stack.pop();
       if (visited.has(n)) continue;
@@ -227,115 +270,102 @@ function connectedComponents(nodeIds, edges) {
   return comps;
 }
 
-/* ── stat filter chips ── */
+/* ── stat chips: built from visible primary nodes, sorted alpha by short name ── */
 function buildStatChips(nodes) {
-  const stats = new Map(); // stat_name -> count
+  const stats = new Map(); // full_name -> count
   nodes.forEach(n => (n.data.stats || []).forEach(s => stats.set(s.stat, (stats.get(s.stat) || 0) + 1)));
-  const sorted = [...stats.entries()].sort((a, b) => b[1] - a[1]);
+
+  // sort alphabetically by short name
+  const sorted = [...stats.keys()].sort((a, b) => shortStat(a).localeCompare(shortStat(b)));
 
   const bar = document.getElementById("stat-filter-bar");
-  // remove old chips but keep the label
   [...bar.querySelectorAll(".stat-chip")].forEach(c => c.remove());
 
-  sorted.forEach(([stat]) => {
+  sorted.forEach(fullName => {
     const chip = document.createElement("span");
-    chip.className = "stat-chip" + (activeStats.has(stat) ? " active" : "");
-    chip.textContent = stat;
+    chip.className = "stat-chip" + (activeStats.has(fullName) ? " active" : "");
+    chip.textContent = shortStat(fullName);
+    chip.title = fullName; // full name on hover
+    chip.dataset.stat = fullName;
     chip.addEventListener("click", () => {
-      if (activeStats.has(stat)) activeStats.delete(stat);
-      else activeStats.add(stat);
-      chip.classList.toggle("active");
-      applyStatFilter();
+      if (activeStats.has(fullName)) activeStats.delete(fullName);
+      else activeStats.add(fullName);
+      // re-render graph so non-matching nodes are fully hidden
+      renderGraph(); clearPanel();
     });
     bar.appendChild(chip);
   });
 }
 
-function applyStatFilter() {
-  if (!cy) return;
-  if (activeStats.size === 0) {
-    cy.nodes().style("opacity", null).style("display", "element");
-    cy.edges().style("opacity", null).style("display", "element");
-    return;
-  }
-  cy.nodes().forEach(n => {
-    const stats = n.data("stats") || [];
-    const match = stats.some(s => activeStats.has(s.stat));
-    if (match) {
-      n.style("opacity", null);
-      n.style("display", "element");
-    } else {
-      n.style("opacity", 0.1);
-    }
-  });
-  // dim edges where source doesn't match
-  cy.edges().forEach(e => {
-    const srcMatch = (e.source().data("stats") || []).some(s => activeStats.has(s.stat));
-    e.style("opacity", srcMatch ? null : 0.05);
-  });
-}
-
-/* ── node label builder ── */
+/* ── node label: Name / abbreviated stats / map (not monster — avoids name duplication) ── */
 function buildLabel(data) {
+  // line 1: crystal name
   let label = data.name;
-  // top 2 stats
+
+  // line 2: top 3 stats abbreviated, greyed visually by being short codes
   const stats = data.stats || [];
   if (stats.length) {
-    const parts = stats.slice(0, 2).map(s => {
+    const parts = stats.slice(0, 3).map(s => {
       const v = parseFloat(s.amount);
       const sign = v > 0 ? "+" : "";
-      return `${s.stat} ${sign}${s.amount}`;
+      return `${shortStat(s.stat)} ${sign}${s.amount}`;
     });
     label += "\n" + parts.join("  ");
   }
-  // first drop source
+
+  // line 3: map name (not monster — monster often duplicates crystal name)
   const drops = data.drop_sources || [];
   if (drops.length) {
-    const d = drops[0];
-    const lvl = d.level ? ` Lv${d.level}` : "";
-    const name = d.monster ? d.monster.split(" ").slice(0, 3).join(" ") : "?";
-    label += "\n" + name + lvl;
+    // find first drop with a map that isn't empty/"?"
+    const d = drops.find(d => d.map && d.map !== "?") || drops[0];
+    if (d && d.map) {
+      // truncate long map names
+      const map = d.map.length > 22 ? d.map.slice(0, 20) + "…" : d.map;
+      label += "\n" + map;
+    }
   }
+
   return label;
 }
 
-/* ── main render ── */
+/* ── render ── */
 function renderGraph() {
   showEnhancers = document.getElementById("show-enhancer").checked;
   const slot = SLOTS.find(s => s.key === activeSlot);
 
   let primary = allNodes.filter(n => {
     const t = n.data.crysta_type;
+    // slot filter
     if (activeSlot !== "All") {
-      const inBase = t === slot.base;
-      const inEnh = showEnhancers && t === slot.enhancer;
-      if (!inBase && !inEnh) return false;
+      if (t !== slot.base && !(showEnhancers && t === slot.enhancer)) return false;
     } else {
       if (!showEnhancers && isEnhancer(t)) return false;
     }
-    return !searchVal || n.data.name.toLowerCase().includes(searchVal);
+    // search
+    if (searchVal && !n.data.name.toLowerCase().includes(searchVal)) return false;
+    // stat filter: if any stats active, node must have at least one (OR logic)
+    if (activeStats.size > 0) {
+      const nodeStats = new Set((n.data.stats || []).map(s => s.stat));
+      if (![...activeStats].some(s => nodeStats.has(s))) return false;
+    }
+    return true;
   });
 
-  // chain depths for sorting
+  // sort components by chain depth desc
   const primaryIds = primary.map(n => n.id);
   const depths = computeDepths(primaryIds, allEdges);
-
-  // sort components by max depth desc (longest chain first)
-  const visibleEdgesForComp = allEdges.filter(e => new Set(primaryIds).has(e.source) && new Set(primaryIds).has(e.target));
-  const comps = connectedComponents(primaryIds, visibleEdgesForComp);
+  const visEdgesForComp = allEdges.filter(e => new Set(primaryIds).has(e.source) && new Set(primaryIds).has(e.target));
+  const comps = connectedComponents(primaryIds, visEdgesForComp);
   comps.sort((a, b) => Math.max(...b.map(id => depths[id] || 0)) - Math.max(...a.map(id => depths[id] || 0)));
-  const sortedIds = comps.flat();
   const sortOrder = {};
-  sortedIds.forEach((id, i) => sortOrder[id] = i);
+  comps.flat().forEach((id, i) => sortOrder[id] = i);
   primary = primary.sort((a, b) => (sortOrder[a.id] || 0) - (sortOrder[b.id] || 0));
 
   const primaryIdSet = new Set(primary.map(n => n.id));
 
-  // cross-slot stubs
+  // cross-slot stubs (upgrade targets outside current filter)
   const stubIds = new Set();
-  allEdges.forEach(e => {
-    if (primaryIdSet.has(e.source) && !primaryIdSet.has(e.target)) stubIds.add(e.target);
-  });
+  allEdges.forEach(e => { if (primaryIdSet.has(e.source) && !primaryIdSet.has(e.target)) stubIds.add(e.target); });
 
   const visEdges = allEdges.filter(e => primaryIdSet.has(e.source) && (primaryIdSet.has(e.target) || stubIds.has(e.target)));
   const stubNodes = [...stubIds].map(id => nodeById[id]).filter(Boolean);
@@ -355,8 +385,7 @@ function renderGraph() {
         id: n.id, label: n.data.name,
         stub: true, enhancer: isEnhancer(n.data.crysta_type),
         slot_color: slotOf(n.data.crysta_type).color,
-        chain_depth: 0,
-        ...n.data,
+        chain_depth: 0, ...n.data,
       }
     })),
     ...visEdges.map(e => ({ data: { id: e.id, source: e.source, target: e.target } }))
@@ -370,8 +399,7 @@ function renderGraph() {
   cy = cytoscape({
     container: document.getElementById("cy"),
     elements,
-    minZoom: 0.15,
-    maxZoom: 3,
+    minZoom: 0.12, maxZoom: 3,
     style: [
       {
         selector: "node",
@@ -380,31 +408,35 @@ function renderGraph() {
           "label": "data(label)",
           "color": "#fff",
           "font-size": "10px",
+          "font-weight": "bold",
           "text-valign": "center",
           "text-halign": "center",
           "text-wrap": "wrap",
-          "text-max-width": "138px",
-          "width": "150px",
-          "height": "68px",
+          "text-max-width": "168px",
+          "line-height": 1.6,
+          "width": "180px",
+          "height": "82px",
           "shape": "round-rectangle",
           "border-width": 2,
           "border-color": "#2a3f52",
         }
       },
       {
+        // enhancer: dark fill, colored dashed border, slightly muted
         selector: "node[?enhancer]",
         style: {
-          "opacity": 0.78,
+          "opacity": 0.82,
           "border-style": "dashed",
           "border-width": 2,
           "border-color": ele => ele.data("slot_color"),
           "background-color": "#111d2b",
           "color": ele => ele.data("slot_color"),
+          "font-weight": "normal",
         }
       },
       {
         selector: "node[?stub]",
-        style: { "opacity": 0.35, "border-style": "dotted", "font-style": "italic" }
+        style: { "opacity": 0.32, "border-style": "dotted", "font-style": "italic", "font-weight": "normal" }
       },
       {
         selector: "node:selected",
@@ -420,54 +452,41 @@ function renderGraph() {
         }
       }
     ],
-    layout: {
-      name: "dagre", rankDir: "LR", nodeSep: 28, rankSep: 90, animate: false,
-    }
+    layout: { name: "dagre", rankDir: "LR", nodeSep: 28, rankSep: 90, animate: false }
   });
 
-  // initial zoom: fit first component (longest chain) instead of all
+  // zoom to first chain component on render
   cy.ready(() => {
-    const firstCompIds = comps[0] || [];
-    if (firstCompIds.length) {
-      const firstNodes = cy.nodes().filter(n => firstCompIds.includes(n.id()));
+    const firstComp = comps[0] || [];
+    if (firstComp.length) {
+      const firstNodes = cy.nodes().filter(n => firstComp.includes(n.id()));
       cy.fit(firstNodes, 60);
       if (cy.zoom() > 1.4) cy.zoom(1.4);
     } else {
       cy.fit(undefined, 60);
     }
-    setupMinimap();
+    drawMinimap();
   });
 
   cy.on("tap", "node", evt => showPanel(evt.target.data()));
   cy.on("tap", evt => { if (evt.target === cy) clearPanel(); });
   cy.on("viewport render", drawMinimap);
 
-  // rebuild stat chips based on current primary nodes
-  buildStatChips(primary);
-  if (activeStats.size) applyStatFilter();
+  // rebuild chips from current primary (before stat filter hides some)
+  // collect from all nodes matching slot+search but ignoring stat filter for chip list
+  const chipsBase = allNodes.filter(n => {
+    const t = n.data.crysta_type;
+    if (activeSlot !== "All") {
+      if (t !== slot.base && !(showEnhancers && t === slot.enhancer)) return false;
+    } else {
+      if (!showEnhancers && isEnhancer(t)) return false;
+    }
+    return !searchVal || n.data.name.toLowerCase().includes(searchVal);
+  });
+  buildStatChips(chipsBase);
 }
 
 /* ── minimap ── */
-let minimapSetup = false;
-function setupMinimap() {
-  const canvas = document.getElementById("minimap");
-  canvas.addEventListener("click", e => {
-    const rect = canvas.getBoundingClientRect();
-    const mx = e.clientX - rect.left;
-    const my = e.clientY - rect.top;
-    const bb = cy.elements().boundingBox();
-    if (!bb || !bb.w) return;
-    const s = Math.min(164 / bb.w, 114 / bb.h);
-    const worldX = (mx - 3) / s + bb.x1;
-    const worldY = (my - 3) / s + bb.y1;
-    cy.animate({ center: { eles: null }, pan: {
-      x: cy.width() / 2 - worldX * cy.zoom(),
-      y: cy.height() / 2 - worldY * cy.zoom(),
-    }, duration: 200 });
-  });
-  drawMinimap();
-}
-
 function drawMinimap() {
   if (!cy) return;
   const canvas = document.getElementById("minimap");
@@ -480,9 +499,6 @@ function drawMinimap() {
   if (!bb || !bb.w) return;
   const pad = 3;
   const s = Math.min((W - pad * 2) / bb.w, (H - pad * 2) / bb.h);
-
-  const wx = n => (n.position("x") - bb.x1) * s + pad;
-  const wy = n => (n.position("y") - bb.y1) * s + pad;
 
   // edges
   ctx.strokeStyle = "#2a3f52"; ctx.lineWidth = 0.5;
@@ -498,7 +514,9 @@ function drawMinimap() {
   cy.nodes().forEach(n => {
     ctx.globalAlpha = n.data("stub") ? 0.25 : (n.data("enhancer") ? 0.55 : 0.9);
     ctx.fillStyle = n.data("slot_color") || "#67b8df";
-    ctx.fillRect(wx(n) - 4, wy(n) - 2, 9, 4);
+    const x = (n.position("x") - bb.x1) * s + pad;
+    const y = (n.position("y") - bb.y1) * s + pad;
+    ctx.fillRect(x - 4, y - 2, 9, 4);
     ctx.globalAlpha = 1;
   });
 
@@ -508,12 +526,25 @@ function drawMinimap() {
   const vy = (-pan.y / zoom - bb.y1) * s + pad;
   const vw = (cy.width() / zoom) * s;
   const vh = (cy.height() / zoom) * s;
-  ctx.strokeStyle = "#67b8df"; ctx.lineWidth = 1; ctx.globalAlpha = 0.8;
+  ctx.strokeStyle = "#67b8df"; ctx.lineWidth = 1; ctx.globalAlpha = 0.85;
   ctx.strokeRect(vx, vy, vw, vh);
   ctx.globalAlpha = 1;
 }
 
-/* ── panel ── */
+document.getElementById("minimap-wrap").addEventListener("click", e => {
+  if (!cy) return;
+  const rect = e.currentTarget.getBoundingClientRect();
+  const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+  const bb = cy.elements().boundingBox();
+  if (!bb || !bb.w) return;
+  const pad = 3;
+  const s = Math.min((170 - pad * 2) / bb.w, (120 - pad * 2) / bb.h);
+  const worldX = (mx - pad) / s + bb.x1;
+  const worldY = (my - pad) / s + bb.y1;
+  cy.animate({ pan: { x: cy.width() / 2 - worldX * cy.zoom(), y: cy.height() / 2 - worldY * cy.zoom() }, duration: 200 });
+});
+
+/* ── side panel ── */
 function showPanel(data) {
   const color = slotOf(data.crysta_type).color;
   let html = `<h2>${data.name}</h2>`;
@@ -537,6 +568,7 @@ function showPanel(data) {
     html += `<div><p class="section-title">Stat / Effect</p>`;
     data.stats.forEach(s => {
       const neg = parseFloat(s.amount) < 0;
+      // show full stat name in panel (not abbreviated)
       html += `<div class="stat-row"><span>${s.stat}</span><span class="val${neg ? " neg" : ""}">${s.amount}</span></div>`;
     });
     html += `</div>`;
@@ -564,7 +596,6 @@ function clearPanel() {
   document.getElementById("panel").innerHTML = `<p id="placeholder">Click a node to see details</p>`;
 }
 
-/* ── controls ── */
 document.getElementById("fit-btn").addEventListener("click", () => cy && cy.fit(undefined, 40));
 document.getElementById("search").addEventListener("input", e => { searchVal = e.target.value.toLowerCase(); renderGraph(); clearPanel(); });
 document.getElementById("show-enhancer").addEventListener("change", () => { renderGraph(); clearPanel(); });
