@@ -597,7 +597,7 @@ function renderGraph() {
     }
   });
 
-  // smooth scroll → vertical pan
+  // smooth scroll → vertical pan (mouse wheel)
   let _scrollVY = 0, _scrollRaf = null;
   document.getElementById("cy").addEventListener("wheel", e => {
     e.preventDefault();
@@ -613,6 +613,44 @@ function renderGraph() {
       tickScroll();
     });
   }
+
+  // touch momentum — track pan velocity, coast after finger lifts
+  let _panHistory = [], _momentumRaf = null, _touching = false;
+  const _cyEl = document.getElementById("cy");
+
+  _cyEl.addEventListener("touchstart", () => {
+    _touching = true;
+    _panHistory = [];
+    if (_momentumRaf) { cancelAnimationFrame(_momentumRaf); _momentumRaf = null; }
+  }, { passive: true });
+
+  cy.on("pan", () => {
+    if (!_touching || _panClamping) return;
+    _panHistory.push({ ...cy.pan(), t: performance.now() });
+    if (_panHistory.length > 8) _panHistory.shift();
+  });
+
+  _cyEl.addEventListener("touchend", e => {
+    _touching = false;
+    if (e.touches.length > 0) return; // still multi-touching
+    if (_panHistory.length < 2) return;
+    const last = _panHistory[_panHistory.length - 1];
+    const prev = _panHistory[0];
+    const dt = last.t - prev.t;
+    if (dt <= 0 || dt > 120) return; // gesture too slow/stale
+    let vx = (last.x - prev.x) / dt * 16;
+    let vy = (last.y - prev.y) / dt * 16;
+    const speed = Math.sqrt(vx * vx + vy * vy);
+    if (speed < 1.5) return;
+    if (speed > 50) { vx *= 50 / speed; vy *= 50 / speed; } // cap
+    function momentumTick() {
+      if (Math.abs(vx) < 0.3 && Math.abs(vy) < 0.3) { _momentumRaf = null; return; }
+      cy.panBy({ x: vx, y: vy });
+      vx *= 0.93; vy *= 0.93;
+      _momentumRaf = requestAnimationFrame(momentumTick);
+    }
+    _momentumRaf = requestAnimationFrame(momentumTick);
+  }, { passive: true });
 
   buildStatPicker(primaryForChips);
 }
