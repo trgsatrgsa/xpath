@@ -98,7 +98,7 @@
     background: rgba(15,23,34,0.9); border: 1px solid #2a3f52; color: #8aa8ba;
     width: 44px; height: 44px; border-radius: 12px; cursor: pointer;
     font-size: 1.2rem; display: flex; align-items: center; justify-content: center;
-    backdrop-filter: blur(6px); user-select: none; transition: all 0.12s;
+    user-select: none; transition: border-color 0.12s, color 0.12s;
   }
   .cv-btn:active { border-color: #67b8df; color: #67b8df; background: rgba(12,111,146,0.4); }
   #node-count { font-size: 0.64rem; color: #2a3f52; white-space: nowrap; text-align: center; }
@@ -546,7 +546,10 @@ function renderGraph() {
     ],
     layout: { name: "dagre", rankDir: "LR", nodeSep: 28, rankSep: 90, animate: false },
     autoungrabify: true,
-    userZoomingEnabled: true,  // enables pinch zoom
+    userZoomingEnabled: true,
+    pixelRatio: Math.min(window.devicePixelRatio || 1, 1.5), // cap retina render cost
+    hideEdgesOnViewport: true,   // skip edge draws during pan/zoom
+    hideLabelsOnViewport: true,  // skip label draws during pan/zoom
   });
 
   cy.ready(() => {
@@ -578,13 +581,12 @@ function renderGraph() {
   cy.on("tap", "node", evt => showPanel(evt.target.data()));
   cy.on("tap", evt => { if (evt.target === cy) closeDrawer(); });
 
-  // pan clamp
-  let _panClamping = false;
+  // pan clamp — cache bb so we don't recompute every frame
+  let _panClamping = false, _clampBB = null;
+  cy.ready(() => { _clampBB = cy.nodes(":visible").boundingBox(); });
   cy.on("pan zoom", () => {
-    if (_panClamping) return;
-    const vis = cy.nodes(":visible");
-    if (!vis.length) return;
-    const bb = vis.boundingBox();
+    if (_panClamping || !_clampBB) return;
+    const bb = _clampBB;
     const zoom = cy.zoom(), margin = 40, p = cy.pan();
     const clampedX = Math.min(Math.max(p.x, margin - bb.x2 * zoom), cy.width()  - margin - bb.x1 * zoom);
     const clampedY = Math.min(Math.max(p.y, margin - bb.y2 * zoom), cy.height() - margin - bb.y1 * zoom);
