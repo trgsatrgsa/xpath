@@ -1,0 +1,952 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" type="image/x-icon" href="fav.ico">
+<title>XPath — Xtal Upgrade Path</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: sans-serif; background: #0f1722; color: #d9ebf8; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+
+  /* top bar — icon, version, search, mobile, help */
+  #top-bar {
+    display: flex; align-items: center; gap: 8px;
+    background: #17212d; border-bottom: 1px solid #1e3447;
+    padding: 6px 12px; flex-shrink: 0;
+  }
+  #top-bar h1 { font-size: 0.82rem; color: #67b8df; white-space: nowrap; letter-spacing: 0.03em; }
+  #version-tag { font-size: 0.68rem; color: #1e3447; white-space: nowrap; }
+  #search {
+    flex: 1; background: #0f1722; border: 1px solid #2a3f52; color: #d9ebf8;
+    padding: 4px 9px; border-radius: 6px; font-size: 0.82rem; min-width: 0;
+  }
+  #search:focus { outline: none; border-color: #67b8df; }
+  #mobile-btn {
+    background: none; border: 1px solid #2a3f52; color: #52636d;
+    width: 26px; height: 26px; border-radius: 50%; cursor: pointer;
+    font-size: 0.72rem; font-weight: 700; flex-shrink: 0; transition: all 0.12s;
+    display: flex; align-items: center; justify-content: center; text-decoration: none;
+  }
+  #mobile-btn:hover { border-color: #67b8df; color: #67b8df; }
+
+  /* tabs bar */
+  #tabs {
+    display: flex; align-items: stretch;
+    background: #17212d; border-bottom: 1px solid #2a3f52; flex-shrink: 0;
+  }
+  #tabs-scroll { display: flex; gap: 2px; padding: 5px 0 0 12px; overflow-x: auto; flex: 1; }
+  .tab {
+    padding: 5px 13px; border-radius: 6px 6px 0 0; cursor: pointer;
+    font-size: 0.8rem; color: #52636d; white-space: nowrap;
+    border: 1px solid transparent; border-bottom: none; transition: all 0.12s; align-self: flex-end;
+  }
+  .tab:hover { color: #d9ebf8; background: #1e3447; }
+  .tab.active { color: #fff; border-color: #2a3f52; border-bottom: 1px solid #17212d; background: #0f1722; }
+  .tab .dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 4px; vertical-align: middle; }
+
+  /* floating canvas controls */
+  #canvas-controls {
+    position: absolute; top: 12px; right: calc(270px + 12px);
+    display: flex; gap: 6px; align-items: center; z-index: 10;
+  }
+  .cv-btn {
+    background: rgba(15,23,34,0.88); border: 1px solid #2a3f52; color: #52636d;
+    width: 30px; height: 30px; border-radius: 8px; cursor: pointer;
+    font-size: 0.9rem; display: flex; align-items: center; justify-content: center;
+    transition: all 0.12s; backdrop-filter: blur(4px); user-select: none;
+  }
+  .cv-btn:hover { border-color: #67b8df; color: #67b8df; }
+  .cv-btn.active { background: rgba(12,111,146,0.5); border-color: #67b8df; color: #67b8df; }
+  #zoom-slider {
+    -webkit-appearance: none; appearance: none;
+    width: 64px; height: 4px; border-radius: 2px;
+    background: #2a3f52; outline: none; cursor: pointer;
+  }
+  #zoom-slider::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none;
+    width: 12px; height: 12px; border-radius: 50%;
+    background: #67b8df; cursor: pointer;
+  }
+  #node-count { font-size: 0.7rem; color: #2a3f52; white-space: nowrap; }
+
+  #stat-filter-bar {
+    display: flex; flex-direction: column; gap: 3px;
+    padding: 5px 12px; background: #0f1722; border-bottom: 1px solid #1e3447;
+    flex-shrink: 0; max-height: 90px; overflow-y: auto;
+  }
+  #stat-filter-bar .filter-label { font-size: 0.7rem; color: #52636d; white-space: nowrap; }
+  .chip-group { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+  .chip-group-label {
+    font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.1em;
+    color: #2a3f52; white-space: nowrap; padding-right: 4px;
+    border-right: 1px solid #2a3f52; margin-right: 2px; min-width: 58px; text-align: right;
+  }
+  .stat-chip {
+    font-size: 0.7rem; padding: 2px 7px; border-radius: 10px;
+    border: 1px solid #2a3f52; color: #8aa8ba; cursor: pointer;
+    background: #17212d; white-space: nowrap; transition: all 0.1s; user-select: none;
+  }
+  .stat-chip:hover { border-color: #67b8df; color: #d9ebf8; }
+  .stat-chip.active { background: #0c6f92; border-color: #67b8df; color: #fff; }
+
+  #main { display: flex; flex: 1; overflow: hidden; position: relative; }
+  #cy { flex: 1; }
+
+  #minimap-wrap {
+    position: absolute; bottom: 14px; left: 14px;
+    width: 160px; height: 120px;
+    background: rgba(15,23,34,0.92); border: 1px solid #2a3f52;
+    border-radius: 8px; overflow: hidden; cursor: crosshair;
+    z-index: 10;
+  }
+  #minimap { width: 160px; height: 120px; display: block; }
+
+  #panel {
+    width: 270px; background: #17212d; border-left: 1px solid #2a3f52;
+    padding: 13px; overflow-y: auto; display: flex; flex-direction: column;
+    gap: 9px; flex-shrink: 0;
+  }
+  #panel h2 { font-size: 0.92rem; color: #67b8df; word-break: break-word; line-height: 1.4; }
+  .tag { display: inline-block; font-size: 0.7rem; padding: 2px 7px; border-radius: 4px; font-weight: 700; }
+  .badge-enh { font-size: 0.66rem; padding: 1px 5px; border-radius: 3px; background: #1e3447; color: #8aa8ba; border: 1px dashed #2a3f52; }
+  .section-title { font-size: 0.66rem; text-transform: uppercase; letter-spacing: 0.08em; color: #52636d; margin-bottom: 4px; }
+  .stat-row { display: flex; justify-content: space-between; font-size: 0.81rem; padding: 3px 0; border-bottom: 1px solid #1e3447; }
+  .val { color: #7ee8a2; font-weight: 700; }
+  .val.neg { color: #f48a8a; }
+  .drop-row { font-size: 0.78rem; padding: 3px 0; border-bottom: 1px solid #1e3447; line-height: 1.5; }
+  .drop-row .map-name { color: #67b8df; font-size: 0.74rem; }
+  .prop-row { font-size: 0.81rem; display: flex; justify-content: space-between; }
+  .prop-row span:first-child { color: #52636d; }
+  #placeholder { color: #52636d; font-size: 0.83rem; margin-top: 28px; text-align: center; }
+
+  /* help button */
+  #help-btn {
+    background: none; border: 1px solid #2a3f52; color: #52636d;
+    width: 26px; height: 26px; border-radius: 50%; cursor: pointer;
+    font-size: 0.82rem; font-weight: 700; flex-shrink: 0; transition: all 0.12s;
+  }
+  #help-btn:hover { border-color: #67b8df; color: #67b8df; }
+
+  /* modal overlay */
+  #help-modal {
+    display: none; position: fixed; inset: 0; z-index: 200;
+    background: rgba(0,0,0,0.65); align-items: center; justify-content: center;
+  }
+  #help-modal.open { display: flex; }
+  #help-box {
+    background: #17212d; border: 1px solid #2a3f52; border-radius: 12px;
+    padding: 24px 28px; max-width: 520px; width: 92%; max-height: 85vh;
+    overflow-y: auto; position: relative; color: #d9ebf8;
+  }
+  #help-box h2 { font-size: 1rem; color: #67b8df; margin-bottom: 14px; }
+  #help-box h2 .subtitle { font-size: 0.78rem; color: #52636d; font-weight: normal; }
+  #help-box h3 { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.08em; color: #52636d; margin: 16px 0 6px; }
+  #help-box p, #help-box li { font-size: 0.83rem; line-height: 1.65; color: #b0c8d8; }
+  #help-box ul { padding-left: 16px; display: flex; flex-direction: column; gap: 4px; }
+  #help-box .key {
+    display: inline-block; background: #1e3447; border: 1px solid #2a3f52;
+    border-radius: 4px; padding: 0 6px; font-size: 0.75rem; color: #d9ebf8;
+    font-family: monospace; white-space: nowrap;
+  }
+  #help-box .legend-row { display: flex; align-items: center; gap: 8px; margin: 4px 0; font-size: 0.82rem; color: #b0c8d8; }
+  #help-box .swatch { width: 32px; height: 14px; border-radius: 3px; flex-shrink: 0; }
+  #help-box .swatch.dashed { background: #111d2b; border: 2px dashed; border-radius: 3px; }
+  #help-close {
+    position: absolute; top: 14px; right: 16px;
+    background: none; border: none; color: #52636d; font-size: 1.2rem; cursor: pointer; line-height: 1;
+  }
+  #help-close:hover { color: #d9ebf8; }
+  #help-box .footer-note { margin-top: 18px; font-size: 0.72rem; color: #52636d; border-top: 1px solid #1e3447; padding-top: 10px; }
+
+  /* tooltip */
+  #cy-tooltip {
+    position: fixed;
+    pointer-events: none;
+    z-index: 100;
+    background: #17212d;
+    border: 1px solid #2a3f52;
+    border-radius: 8px;
+    padding: 10px 12px;
+    min-width: 180px;
+    max-width: 260px;
+    font-size: 0.78rem;
+    line-height: 1.5;
+    color: #d9ebf8;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.5);
+    display: none;
+  }
+  #cy-tooltip h4 { font-size: 0.82rem; color: #67b8df; margin-bottom: 4px; }
+  #cy-tooltip .tt-type { font-size: 0.68rem; font-weight: 700; padding: 1px 6px; border-radius: 3px; display: inline-block; margin-bottom: 6px; }
+  #cy-tooltip .tt-stat { display: flex; justify-content: space-between; gap: 12px; border-bottom: 1px solid #1e3447; padding: 2px 0; }
+  #cy-tooltip .tt-stat .tv { font-weight: 700; white-space: nowrap; }
+  #cy-tooltip .tt-stat .tv.neg { color: #f48a8a; }
+  #cy-tooltip .tt-stat .tv.pos { color: #7ee8a2; }
+  #cy-tooltip .tt-sep { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.08em; color: #52636d; margin: 5px 0 3px; }
+  #cy-tooltip .tt-drop { color: #8aa8ba; }
+  #cy-tooltip .tt-map { color: #67b8df; font-size: 0.74rem; }
+</style>
+</head>
+<body>
+
+<div id="top-bar">
+  <h1>⬡ XPath</h1>
+  <span id="version-tag"></span>
+  <input id="search" type="text" placeholder="Search...">
+  <a href="index.html" id="mobile-btn" title="Mobile version">M</a>
+  <button id="help-btn" title="How to use">?</button>
+</div>
+<div id="tabs">
+  <div id="tabs-scroll"></div>
+</div>
+<div id="stat-filter-bar"><span class="filter-label">Stats:</span></div>
+
+<div id="cy-tooltip"></div>
+
+<div id="help-modal">
+  <div id="help-box">
+    <button id="help-close" title="Close">×</button>
+    <h2>XPath <span class="subtitle">— Xtal Upgrade Path</span></h2>
+
+    <h3>Filter</h3>
+    <ul>
+      <li><span class="key">Tabs</span> — switch slot: Weapon, Armor, Additional, Special, Normal</li>
+      <li><span class="key">Search</span> — filter by name</li>
+      <li><span class="key">Stat chips</span> — click to show crystals with that stat, multi-select</li>
+    </ul>
+
+    <h3>Graph</h3>
+    <ul>
+      <li>Arrow = upgrade direction</li>
+      <li>Longer chains appear first</li>
+    </ul>
+    <div id="help-legend"></div>
+
+    <h3>Interact</h3>
+    <ul>
+      <li><strong>Hover</strong> — quick stats + drops tooltip</li>
+      <li><strong>Click</strong> — full detail in side panel</li>
+      <li><strong>Scroll</strong> pan up/down &nbsp;·&nbsp; <strong>Drag</strong> pan freely</li>
+      <li><strong>− / slider / +</strong> to zoom &nbsp;·&nbsp; <span class="key">⊡</span> reset to initial view</li>
+      <li>Minimap bottom-left — click to jump</li>
+    </ul>
+
+    <p class="footer-note">Data from <a href="https://coryn.club" target="_blank" style="color:#67b8df">coryn.club</a> &nbsp;·&nbsp; GPL-2.0</p>
+  </div>
+</div>
+
+<div id="main">
+  <div id="cy"></div>
+  <div id="canvas-controls">
+    <button class="cv-btn" id="zoom-out-btn" title="Zoom Out">−</button>
+    <input type="range" id="zoom-slider" min="0" max="100" value="50" title="Zoom">
+    <button class="cv-btn" id="zoom-in-btn" title="Zoom In">+</button>
+    <button class="cv-btn" id="fit-btn" title="Reset View">⊡</button>
+    <span id="node-count"></span>
+  </div>
+  <div id="minimap-wrap"><canvas id="minimap"></canvas></div>
+  <div id="panel"><p id="placeholder">Click a node to see details</p></div>
+</div>
+
+<script>
+// Auto-redirect to mobile version for touch devices with narrow screens
+// desktop.html — no auto-redirect (mobile is the default at index.html)
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.29.2/cytoscape.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/dagre/0.8.5/dagre.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/cytoscape-dagre@2.5.0/cytoscape-dagre.min.js"></script>
+<script>
+cytoscape.use(cytoscapeDagre);
+
+/* ── slot groups ── */
+const SLOTS = [
+  { key: "All",        label: "All",        color: "#67b8df", base: null,                  enhancer: null },
+  { key: "Weapon",     label: "Weapon",     color: "#e07b39", base: "Weapon Crysta",       enhancer: "Enhancer Crysta (Red)" },
+  { key: "Armor",      label: "Armor",      color: "#5bbf7a", base: "Armor Crysta",        enhancer: "Enhancer Crysta (Green)" },
+  { key: "Additional", label: "Additional", color: "#d4b84a", base: "Additional Crysta",   enhancer: "Enhancer Crysta (Yellow)" },
+  { key: "Special",    label: "Special",    color: "#a97fe0", base: "Special Crysta",      enhancer: "Enhancer Crysta (Purple)" },
+  { key: "Normal",     label: "Normal",     color: "#4fa3d8", base: "Normal Crysta",       enhancer: "Enhancer Crysta (Blue)" },
+];
+const TYPE_TO_SLOT = {};
+SLOTS.forEach(s => { if (s.base) TYPE_TO_SLOT[s.base] = s; if (s.enhancer) TYPE_TO_SLOT[s.enhancer] = s; });
+function slotOf(t) { return TYPE_TO_SLOT[t] || SLOTS[0]; }
+function isEnhancer(t) { return t && t.startsWith("Enhancer"); }
+
+/* ── stat abbreviation map ── */
+const STAT_SHORT = {
+  "Critical Rate":              "CR",
+  "Critical Rate %":            "CR%",
+  "MaxHP":                      "HP",
+  "MaxHP %":                    "HP%",
+  "MaxMP":                      "MP",
+  "MaxMP %":                    "MP%",
+  "Attack MP Recovery":         "AMPR",
+  "MP Recovery":                "MPR",
+  "Natural HP Recovery":        "NHPR",
+  "Natural MP Recovery":        "NMPR",
+  "Physical Resistance":        "P.Res",
+  "Magic Resistance":           "M.Res",
+  "Ailment Resistance":         "Ail.Res",
+  "Resistance":                 "Res",
+  "Attack Speed":               "ASPD",
+  "Motion Speed":               "MSPD",
+  "Unsheathe Attack":           "Unsheathe",
+  "Stability":                  "Stab",
+  "Accuracy":                   "Acc",
+  "Flee Rate":                  "Flee",
+  "Drop Rate":                  "Drop",
+  "Aggro":                      "Aggro",
+  "Smite":                      "Smite",
+  "Guard Break":                "GB",
+  "Guard Recharge":             "GR",
+  "HP Recovery":                "HPR",
+  "Long Range Damage":          "LRD",
+  "Short Range Damage":         "SRD",
+  "Strong":                     "Strong",
+  "Dex":                        "DEX",
+  "Str":                        "STR",
+  "Int":                        "INT",
+  "Vit":                        "VIT",
+  "Agi":                        "AGI",
+  "AGI":                        "AGI",
+  "AGI %":                      "AGI%",
+  "STR %":                      "STR%",
+  "INT %":                      "INT%",
+  "VIT %":                      "VIT%",
+  "DEX %":                      "DEX%",
+  "ATK %":                      "ATK%",
+  "MATK %":                     "MATK%",
+  "DEF %":                      "DEF%",
+  "MDEF %":                     "MDEF%",
+};
+function shortStat(stat) {
+  if (STAT_SHORT[stat]) return STAT_SHORT[stat];
+  // generic: strip " %" -> "%", keep as-is otherwise
+  return stat.replace(" %", "%");
+}
+
+/* ── state ── */
+let cy;
+let allNodes = [], allEdges = [], nodeById = {};
+let activeSlot = "All";
+let searchVal = "";
+let activeStats = new Set(); // full stat names
+let initialViewport = null;
+
+/* ── load ── */
+async function loadGraph() {
+  fetch("version.json").then(r => r.json()).then(v => {
+    document.getElementById("version-tag").textContent = `v${v.version}`;
+    document.querySelector("#help-box .footer-note").innerHTML =
+      `XPath v${v.version} &nbsp;|&nbsp; Data sourced from <a href="https://coryn.club" target="_blank" style="color:#67b8df">coryn.club</a> &nbsp;|&nbsp; GPL-2.0`;
+  }).catch(() => {});
+
+  const { nodes, edges } = await fetch("crysta_graph.json").then(r => r.json());
+  allNodes = nodes; allEdges = edges;
+  allNodes.forEach(n => nodeById[n.id] = n);
+  buildLegend(); buildTabs();
+  renderGraph();
+}
+
+function buildLegend() {
+  // inject legend into help modal
+  const legendHtml = `
+    <h3>Slot Colors</h3>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 16px">
+      ${SLOTS.slice(1).map(s => `
+        <div class="legend-row"><span class="swatch" style="background:${s.color}"></span>${s.label}</div>
+        <div class="legend-row"><span class="swatch dashed" style="border-color:${s.color}"></span>${s.label} Enhancer</div>
+      `).join("")}
+    </div>
+    <div style="margin-top:8px">
+      <div class="legend-row"><span class="swatch" style="background:#2a3f52;opacity:0.35"></span>Faded dotted — cross-slot upgrade target</div>
+    </div>`;
+  document.getElementById("help-legend").innerHTML = legendHtml;
+}
+
+function buildTabs() {
+  const bar = document.getElementById("tabs-scroll");
+  SLOTS.forEach((s, i) => {
+    const div = document.createElement("div");
+    div.className = "tab" + (i === 0 ? " active" : "");
+    if (s.key !== "All") div.innerHTML = `<span class="dot" style="background:${s.color}"></span>`;
+    div.appendChild(document.createTextNode(s.label));
+    div.addEventListener("click", () => {
+      document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+      div.classList.add("active");
+      activeSlot = s.key;
+      activeStats.clear();
+      renderGraph(); clearPanel();
+    });
+    bar.appendChild(div);
+  });
+}
+
+/* ── chain depth ── */
+function computeDepths(nodeIds, edges) {
+  const nodeSet = new Set(nodeIds);
+  const out = {};
+  nodeIds.forEach(id => out[id] = []);
+  edges.forEach(e => { if (nodeSet.has(e.source) && nodeSet.has(e.target)) out[e.source].push(e.target); });
+  const memo = {};
+  function dfs(id) {
+    if (memo[id] !== undefined) return memo[id];
+    memo[id] = 0;
+    const kids = out[id] || [];
+    memo[id] = kids.length ? 1 + Math.max(...kids.map(dfs)) : 0;
+    return memo[id];
+  }
+  nodeIds.forEach(id => dfs(id));
+  return memo;
+}
+
+/* ── connected components ── */
+function connectedComponents(nodeIds, edges) {
+  const nodeSet = new Set(nodeIds);
+  const adj = {};
+  nodeIds.forEach(id => adj[id] = []);
+  edges.forEach(e => {
+    if (nodeSet.has(e.source) && nodeSet.has(e.target)) {
+      adj[e.source].push(e.target); adj[e.target].push(e.source);
+    }
+  });
+  const visited = new Set(); const comps = [];
+  nodeIds.forEach(id => {
+    if (visited.has(id)) return;
+    const comp = [], stack = [id];
+    while (stack.length) {
+      const n = stack.pop();
+      if (visited.has(n)) continue;
+      visited.add(n); comp.push(n);
+      (adj[n] || []).forEach(nb => { if (!visited.has(nb)) stack.push(nb); });
+    }
+    comps.push(comp);
+  });
+  return comps;
+}
+
+/* ── stat chips: built from visible primary nodes, sorted alpha by short name ── */
+/* stat group classification */
+const STAT_GROUPS = {
+  Offensive: new Set([
+    "ATK","ATK %","MATK","MATK %",
+    "Critical Rate","Critical Rate %","Critical Damage",
+    "STR","STR %","INT","INT %","DEX","DEX %","AGI","AGI %","VIT","VIT %",
+    "Physical Pierce","Magic Pierce",
+    "Unsheathe Attack","Long Range Damage","Short Range Damage",
+    "Accuracy","Stability","Strong","Smite","Anticipate","Guard Break",
+  ]),
+  Defensive: new Set([
+    "MaxHP","MaxHP %","DEF","DEF %","MDEF","MDEF %",
+    "Physical Resistance","Magic Resistance","Resistance",
+    "Fire Resistance","Water Resistance","Wind Resistance","Earth Resistance",
+    "Light Resistance","Dark Resistance",
+    "Ailment Resistance","Flee Rate","Guard Recharge","Evasion Rate",
+  ]),
+};
+function statGroup(name) {
+  if (STAT_GROUPS.Offensive.has(name)) return "Offensive";
+  if (STAT_GROUPS.Defensive.has(name)) return "Defensive";
+  return "Utility";
+}
+
+function buildStatChips(nodes) {
+  const stats = new Map();
+  nodes.forEach(n => (n.data.stats || []).forEach(s => stats.set(s.stat, (stats.get(s.stat) || 0) + 1)));
+
+  // group -> sorted stat names
+  const groups = { Offensive: [], Defensive: [], Utility: [] };
+  [...stats.keys()].forEach(name => groups[statGroup(name)].push(name));
+  Object.values(groups).forEach(arr => arr.sort((a, b) => shortStat(a).localeCompare(shortStat(b))));
+
+  const bar = document.getElementById("stat-filter-bar");
+  [...bar.querySelectorAll(".stat-chip, .chip-group")].forEach(c => c.remove());
+
+  Object.entries(groups).forEach(([groupName, names]) => {
+    if (!names.length) return;
+    const wrap = document.createElement("span");
+    wrap.className = "chip-group";
+
+    const label = document.createElement("span");
+    label.className = "chip-group-label";
+    label.textContent = groupName;
+    wrap.appendChild(label);
+
+    names.forEach(fullName => {
+      const chip = document.createElement("span");
+      chip.className = "stat-chip" + (activeStats.has(fullName) ? " active" : "");
+      chip.textContent = shortStat(fullName);
+      chip.title = fullName;
+      chip.addEventListener("click", () => {
+        if (activeStats.has(fullName)) activeStats.delete(fullName);
+        else activeStats.add(fullName);
+        renderGraph(); clearPanel();
+      });
+      wrap.appendChild(chip);
+    });
+
+    bar.appendChild(wrap);
+  });
+}
+
+/* ── node label: Name / abbreviated stats / map (not monster — avoids name duplication) ── */
+function buildLabel(data) {
+  // line 1: crystal name
+  let label = data.name;
+
+  // line 2: top 3 stats abbreviated, greyed visually by being short codes
+  const stats = data.stats || [];
+  if (stats.length) {
+    const parts = stats.slice(0, 3).map(s => {
+      const v = parseFloat(s.amount);
+      const sign = v > 0 ? "+" : "";
+      return `${shortStat(s.stat)} ${sign}${s.amount}`;
+    });
+    label += "\n" + parts.join("  ");
+  }
+
+  // line 3: map name (not monster — monster often duplicates crystal name)
+  const drops = data.drop_sources || [];
+  if (drops.length) {
+    // find first drop with a map that isn't empty/"?"
+    const d = drops.find(d => d.map && d.map !== "?") || drops[0];
+    if (d && d.map) {
+      // truncate long map names
+      const map = d.map.length > 22 ? d.map.slice(0, 20) + "…" : d.map;
+      label += "\n" + map;
+    }
+  }
+
+  return label;
+}
+
+/* ── render ── */
+function renderGraph() {
+  const slot = SLOTS.find(s => s.key === activeSlot);
+
+  // slot filter first
+  let primary = allNodes.filter(n => {
+    const t = n.data.crysta_type;
+    if (activeSlot !== "All") {
+      if (t !== slot.base && t !== slot.enhancer) return false;
+    }
+    return true;
+  });
+
+  // search: expand to full chain — any component containing a name-matched node is shown entirely
+  if (searchVal) {
+    const slotIds = new Set(primary.map(n => n.id));
+    const adj = {};
+    slotIds.forEach(id => adj[id] = []);
+    allEdges.forEach(e => {
+      if (slotIds.has(e.source) && slotIds.has(e.target)) {
+        adj[e.source].push(e.target);
+        adj[e.target].push(e.source);
+      }
+    });
+    const matched = new Set(primary.filter(n => n.data.name.toLowerCase().includes(searchVal)).map(n => n.id));
+    const keep = new Set();
+    matched.forEach(startId => {
+      if (keep.has(startId)) return;
+      const stack = [startId];
+      while (stack.length) {
+        const id = stack.pop();
+        if (keep.has(id)) continue;
+        keep.add(id);
+        (adj[id] || []).forEach(nb => { if (!keep.has(nb)) stack.push(nb); });
+      }
+    });
+    primary = primary.filter(n => keep.has(n.id));
+  }
+
+  const primaryForChips = primary.slice(); // snapshot before stat filter for chip building
+
+  // stat filter (individual node must match)
+  if (activeStats.size > 0) {
+    primary = primary.filter(n => {
+      const nodeStats = new Set((n.data.stats || []).map(s => s.stat));
+      return [...activeStats].some(s => nodeStats.has(s));
+    });
+  }
+
+  // sort components by chain depth desc
+  const primaryIds = primary.map(n => n.id);
+  const depths = computeDepths(primaryIds, allEdges);
+  const visEdgesForComp = allEdges.filter(e => new Set(primaryIds).has(e.source) && new Set(primaryIds).has(e.target));
+  const comps = connectedComponents(primaryIds, visEdgesForComp);
+  comps.sort((a, b) => Math.max(...b.map(id => depths[id] || 0)) - Math.max(...a.map(id => depths[id] || 0)));
+  const sortOrder = {};
+  comps.flat().forEach((id, i) => sortOrder[id] = i);
+  primary = primary.sort((a, b) => (sortOrder[a.id] || 0) - (sortOrder[b.id] || 0));
+
+  const primaryIdSet = new Set(primary.map(n => n.id));
+
+  // cross-slot stubs (upgrade targets outside current filter)
+  const stubIds = new Set();
+  allEdges.forEach(e => { if (primaryIdSet.has(e.source) && !primaryIdSet.has(e.target)) stubIds.add(e.target); });
+
+  const visEdges = allEdges.filter(e => primaryIdSet.has(e.source) && (primaryIdSet.has(e.target) || stubIds.has(e.target)));
+  const stubNodes = [...stubIds].map(id => nodeById[id]).filter(Boolean);
+
+  const elements = [
+    ...primary.map(n => ({
+      data: {
+        id: n.id, label: buildLabel(n.data),
+        stub: false, enhancer: isEnhancer(n.data.crysta_type),
+        slot_color: slotOf(n.data.crysta_type).color,
+        chain_depth: depths[n.id] || 0,
+        ...n.data,
+      }
+    })),
+    ...stubNodes.map(n => ({
+      data: {
+        id: n.id, label: n.data.name,
+        stub: true, enhancer: isEnhancer(n.data.crysta_type),
+        slot_color: slotOf(n.data.crysta_type).color,
+        chain_depth: 0, ...n.data,
+      }
+    })),
+    ...visEdges.map(e => ({ data: { id: e.id, source: e.source, target: e.target } }))
+  ];
+
+  document.getElementById("node-count").textContent =
+    `${primary.length} nodes${stubIds.size ? ` + ${stubIds.size} stubs` : ""}`;
+
+  if (cy) cy.destroy();
+
+  cy = cytoscape({
+    container: document.getElementById("cy"),
+    elements,
+    minZoom: MIN_ZOOM, maxZoom: MAX_ZOOM,
+    style: [
+      {
+        selector: "node",
+        style: {
+          "background-color": ele => ele.data("slot_color"),
+          "label": "data(label)",
+          "color": "#fff",
+          "font-size": "10px",
+          "font-weight": "bold",
+          "text-valign": "center",
+          "text-halign": "center",
+          "text-wrap": "wrap",
+          "text-max-width": "168px",
+          "line-height": 1.6,
+          "width": "180px",
+          "height": "82px",
+          "shape": "round-rectangle",
+          "border-width": 2,
+          "border-color": "#2a3f52",
+        }
+      },
+      {
+        // enhancer: dark fill, colored dashed border, slightly muted
+        selector: "node[?enhancer]",
+        style: {
+          "opacity": 0.82,
+          "border-style": "dashed",
+          "border-width": 2,
+          "border-color": ele => ele.data("slot_color"),
+          "background-color": "#111d2b",
+          "color": ele => ele.data("slot_color"),
+          "font-weight": "normal",
+        }
+      },
+      {
+        selector: "node[?stub]",
+        style: { "opacity": 0.32, "border-style": "dotted", "font-style": "italic", "font-weight": "normal" }
+      },
+      {
+        selector: "node:selected",
+        style: { "border-color": "#fff", "border-width": 3, "opacity": 1 }
+      },
+      {
+        selector: "edge",
+        style: {
+          "width": 2, "line-color": "#2a3f52",
+          "target-arrow-color": "#67b8df",
+          "target-arrow-shape": "triangle",
+          "curve-style": "bezier",
+        }
+      }
+    ],
+    layout: { name: "dagre", rankDir: "LR", nodeSep: 28, rankSep: 90, animate: false },
+    autoungrabify: true,   // nodes not draggable
+    userZoomingEnabled: false,  // zoom via slider/buttons only
+  });
+
+  // zoom to first chain component on render
+  cy.ready(() => {
+    // restack components vertically in longest-chain-first order
+    // dagre doesn't guarantee component order, so we enforce it manually
+    const COMP_GAP = 50;
+    let curY = 0;
+    comps.forEach(compIds => {
+      const compSet = new Set(compIds);
+      const compNodes = cy.nodes().filter(n => compSet.has(n.id()));
+      if (!compNodes.length) return;
+      const bb = compNodes.boundingBox();
+      const dy = curY - bb.y1;
+      if (Math.abs(dy) > 0.5) compNodes.forEach(n => n.position({ x: n.position("x"), y: n.position("y") + dy }));
+      curY += (bb.y2 - bb.y1) + COMP_GAP;
+    });
+
+    const firstComp = comps[0] || [];
+    if (firstComp.length) {
+      const peek = cy.nodes().filter(n => firstComp.slice(0, 4).includes(n.id()));
+      cy.fit(peek.length ? peek : cy.nodes().slice(0, 4), 80);
+      if (cy.zoom() > 1.4) cy.zoom(1.4);
+      if (cy.zoom() < 0.7) cy.zoom(0.7);
+    } else {
+      cy.fit(undefined, 60);
+    }
+    initialViewport = { pan: { ...cy.pan() }, zoom: cy.zoom() };
+    syncZoomSlider();
+    drawMinimap();
+  });
+
+  cy.on("tap", "node", evt => { hideTooltip(); showPanel(evt.target.data()); });
+  cy.on("tap", evt => { if (evt.target === cy) clearPanel(); });
+  cy.on("viewport render", drawMinimap);
+
+  // clamp horizontal pan to node extents; vertical is free
+  let _panClamping = false;
+  cy.on("pan zoom", () => {
+    if (_panClamping) return;
+    const vis = cy.nodes(":visible");
+    if (!vis.length) return;
+    const bb = vis.boundingBox();
+    const zoom = cy.zoom();
+    const margin = 120;
+    const p = cy.pan();
+    const minX = margin - bb.x2 * zoom;
+    const maxX = cy.width()  - margin - bb.x1 * zoom;
+    const minY = margin - bb.y2 * zoom;
+    const maxY = cy.height() - margin - bb.y1 * zoom;
+    const clampedX = Math.min(Math.max(p.x, minX), maxX);
+    const clampedY = Math.min(Math.max(p.y, minY), maxY);
+    if (clampedX !== p.x || clampedY !== p.y) {
+      _panClamping = true;
+      cy.pan({ x: clampedX, y: clampedY });
+      _panClamping = false;
+    }
+    syncZoomSlider();
+  });
+
+  // smooth scroll → vertical pan
+  let _scrollVY = 0, _scrollRaf = null;
+  document.getElementById("cy").addEventListener("wheel", e => {
+    e.preventDefault();
+    _scrollVY += e.deltaY * 0.3;
+    if (!_scrollRaf) tickScroll();
+  }, { passive: false });
+  function tickScroll() {
+    _scrollRaf = requestAnimationFrame(() => {
+      if (Math.abs(_scrollVY) < 0.5) { _scrollRaf = null; return; }
+      cy.panBy({ x: 0, y: -_scrollVY });
+      _scrollVY *= 0.82;
+      tickScroll();
+    });
+  }
+
+  cy.on("mouseover", "node", evt => showTooltip(evt.target.data(), evt.originalEvent));
+  cy.on("mousemove", "node", evt => moveTooltip(evt.originalEvent));
+  cy.on("mouseout",  "node", () => hideTooltip());
+
+  const chipsBase = primaryForChips;
+  buildStatChips(chipsBase);
+}
+
+/* ── minimap ── */
+const MM_W = 160, MM_H = 120, MM_PAD = 3;
+
+function minimapScale(bb) {
+  return Math.min((MM_W - MM_PAD * 2) / bb.w, (MM_H - MM_PAD * 2) / bb.h);
+}
+
+function drawMinimap() {
+  if (!cy) return;
+  const canvas = document.getElementById("minimap");
+  const bb = cy.elements().boundingBox();
+  if (!bb || !bb.w) return;
+
+  const s = minimapScale(bb);
+  const W = MM_W, H = MM_H;
+  canvas.width = W; canvas.height = H;
+
+  const ctx = canvas.getContext("2d");
+  ctx.clearRect(0, 0, W, H);
+
+  // edges
+  ctx.strokeStyle = "#2a3f52"; ctx.lineWidth = 0.5;
+  cy.edges().forEach(e => {
+    const sp = e.source().position(), tp = e.target().position();
+    ctx.beginPath();
+    ctx.moveTo((sp.x - bb.x1) * s + MM_PAD, (sp.y - bb.y1) * s + MM_PAD);
+    ctx.lineTo((tp.x - bb.x1) * s + MM_PAD, (tp.y - bb.y1) * s + MM_PAD);
+    ctx.stroke();
+  });
+
+  // nodes
+  cy.nodes().forEach(n => {
+    ctx.globalAlpha = n.data("stub") ? 0.25 : (n.data("enhancer") ? 0.55 : 0.9);
+    ctx.fillStyle = n.data("slot_color") || "#67b8df";
+    const x = (n.position("x") - bb.x1) * s + MM_PAD;
+    const y = (n.position("y") - bb.y1) * s + MM_PAD;
+    ctx.fillRect(x - 4, y - 2, 9, 4);
+    ctx.globalAlpha = 1;
+  });
+
+  // viewport rect — enforce a minimum visible size
+  const pan = cy.pan(), zoom = cy.zoom();
+  const vx = (-pan.x / zoom - bb.x1) * s + MM_PAD;
+  const vy = (-pan.y / zoom - bb.y1) * s + MM_PAD;
+  const vw = Math.max((cy.width()  / zoom) * s, 14);
+  const vh = Math.max((cy.height() / zoom) * s, 10);
+  ctx.strokeStyle = "#67b8df"; ctx.lineWidth = 1.5; ctx.globalAlpha = 0.9;
+  ctx.fillStyle = "rgba(103,184,223,0.08)";
+  ctx.fillRect(vx, vy, vw, vh);
+  ctx.strokeRect(vx, vy, vw, vh);
+  ctx.globalAlpha = 1;
+}
+
+document.getElementById("minimap-wrap").addEventListener("click", e => {
+  if (!cy) return;
+  const rect = e.currentTarget.getBoundingClientRect();
+  const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+  const bb = cy.elements().boundingBox();
+  if (!bb || !bb.w) return;
+  const s = minimapScale(bb);
+  const worldX = (mx - MM_PAD) / s + bb.x1;
+  const worldY = (my - MM_PAD) / s + bb.y1;
+  cy.animate({ pan: { x: cy.width() / 2 - worldX * cy.zoom(), y: cy.height() / 2 - worldY * cy.zoom() }, duration: 200 });
+});
+
+/* ── tooltip ── */
+const _tt = document.getElementById("cy-tooltip");
+
+function showTooltip(data, mouseEvt) {
+  const color = slotOf(data.crysta_type).color;
+  let html = `<h4>${data.name}</h4>`;
+  html += `<span class="tt-type" style="background:${color}22;color:${color};border:1px solid ${color}44">${data.crysta_type || "?"}</span>`;
+
+  if (data.stats && data.stats.length) {
+    html += `<div class="tt-sep">Stat / Effect</div>`;
+    data.stats.forEach(s => {
+      const v = parseFloat(s.amount);
+      const cls = v > 0 ? "pos" : v < 0 ? "neg" : "";
+      const sign = v > 0 ? "+" : "";
+      html += `<div class="tt-stat"><span>${s.stat}</span><span class="tv ${cls}">${sign}${s.amount}</span></div>`;
+    });
+  }
+
+  if (data.drop_sources && data.drop_sources.length) {
+    html += `<div class="tt-sep">Obtained From</div>`;
+    data.drop_sources.slice(0, 4).forEach(d => {
+      html += `<div class="tt-drop">${d.monster || "?"}${d.level ? ` (Lv ${d.level})` : ""}</div>`;
+      html += `<div class="tt-map">${d.map || "?"}</div>`;
+    });
+    if (data.drop_sources.length > 4)
+      html += `<div style="color:#52636d;font-size:0.7rem">+${data.drop_sources.length - 4} more…</div>`;
+  }
+
+  _tt.innerHTML = html;
+  _tt.style.display = "block";
+  moveTooltip(mouseEvt);
+}
+
+function moveTooltip(e) {
+  const pad = 14;
+  const tw = _tt.offsetWidth, th = _tt.offsetHeight;
+  let x = e.clientX + pad, y = e.clientY + pad;
+  if (x + tw > window.innerWidth  - 8) x = e.clientX - tw - pad;
+  if (y + th > window.innerHeight - 8) y = e.clientY - th - pad;
+  _tt.style.left = x + "px";
+  _tt.style.top  = y + "px";
+}
+
+function hideTooltip() { _tt.style.display = "none"; }
+
+/* ── side panel ── */
+function showPanel(data) {
+  const color = slotOf(data.crysta_type).color;
+  let html = `<h2>${data.name}</h2>`;
+  html += `<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">`;
+  html += `<span class="tag" style="background:${color}22;color:${color};border:1px solid ${color}55">${data.crysta_type || "?"}</span>`;
+  if (isEnhancer(data.crysta_type)) html += `<span class="badge-enh">Enhancer</span>`;
+  if (data.chain_depth > 0) html += `<span style="font-size:0.7rem;color:#52636d">⬡ chain ${data.chain_depth}</span>`;
+  if (data.stub) html += `<span style="font-size:0.7rem;color:#c47f2a">⚠ cross-slot</span>`;
+  html += `</div>`;
+
+  if (data.sell_amount != null || data.process_amount != null) {
+    html += `<div>`;
+    if (data.sell_amount != null)
+      html += `<div class="prop-row"><span>Sell</span><span>${data.sell_amount} ${data.sell_unit || ""}</span></div>`;
+    if (data.process_amount != null)
+      html += `<div class="prop-row"><span>Process</span><span>${data.process_amount} ${data.process_type || ""}</span></div>`;
+    html += `</div>`;
+  }
+
+  if (data.stats && data.stats.length) {
+    html += `<div><p class="section-title">Stat / Effect</p>`;
+    data.stats.forEach(s => {
+      const neg = parseFloat(s.amount) < 0;
+      // show full stat name in panel (not abbreviated)
+      html += `<div class="stat-row"><span>${s.stat}</span><span class="val${neg ? " neg" : ""}">${s.amount}</span></div>`;
+    });
+    html += `</div>`;
+  }
+
+  if (data.drop_sources && data.drop_sources.length) {
+    html += `<div><p class="section-title">Obtained From</p>`;
+    data.drop_sources.forEach(d => {
+      html += `<div class="drop-row">
+        ${d.monster || "?"}${d.level ? ` <span style="color:#52636d">(Lv ${d.level})</span>` : ""}
+        ${d.dye ? ` <span style="color:#c4a84f">[${d.dye}]</span>` : ""}
+        <br><span class="map-name">${d.map || "?"}</span>
+      </div>`;
+    });
+    html += `</div>`;
+  }
+
+  if (data.item_url)
+    html += `<a href="https://coryn.club/${data.item_url}" target="_blank" style="color:#67b8df;font-size:0.78rem">View on Coryn Club ↗</a>`;
+
+  document.getElementById("panel").innerHTML = html;
+}
+
+function clearPanel() {
+  document.getElementById("panel").innerHTML = `<p id="placeholder">Click a node to see details</p>`;
+}
+
+/* ── zoom slider sync ── */
+const MIN_ZOOM = 0.5, MAX_ZOOM = 3;
+const LOG_MIN = Math.log(MIN_ZOOM), LOG_MAX = Math.log(MAX_ZOOM);
+function zoomFromSlider(val) { return Math.exp(LOG_MIN + (val / 100) * (LOG_MAX - LOG_MIN)); }
+function sliderFromZoom(z)   { return (Math.log(z) - LOG_MIN) / (LOG_MAX - LOG_MIN) * 100; }
+function syncZoomSlider() {
+  if (!cy) return;
+  document.getElementById("zoom-slider").value = sliderFromZoom(cy.zoom());
+}
+function applyZoom(z) {
+  if (!cy) return;
+  const clamped = Math.min(Math.max(z, MIN_ZOOM), MAX_ZOOM);
+  cy.animate({ zoom: { level: clamped, renderedPosition: { x: cy.width() / 2, y: cy.height() / 2 } }, duration: 250, easing: "ease-in-out-cubic" });
+}
+document.getElementById("zoom-slider").addEventListener("input", e => applyZoom(zoomFromSlider(+e.target.value)));
+document.getElementById("zoom-in-btn").addEventListener("click",  () => cy && applyZoom(cy.zoom() * 1.7));
+document.getElementById("zoom-out-btn").addEventListener("click", () => cy && applyZoom(cy.zoom() / 1.7));
+document.getElementById("fit-btn").addEventListener("click", () => {
+  if (!cy || !initialViewport) return;
+  cy.animate({ pan: initialViewport.pan, zoom: initialViewport.zoom, duration: 300, easing: "ease-in-out-cubic" });
+});
+const helpModal = document.getElementById("help-modal");
+document.getElementById("help-btn").addEventListener("click", () => helpModal.classList.add("open"));
+document.getElementById("help-close").addEventListener("click", () => helpModal.classList.remove("open"));
+helpModal.addEventListener("click", e => { if (e.target === e.currentTarget) helpModal.classList.remove("open"); });
+document.addEventListener("keydown", e => { if (e.key === "Escape") helpModal.classList.remove("open"); });
+document.getElementById("search").addEventListener("input", e => { searchVal = e.target.value.toLowerCase(); renderGraph(); clearPanel(); });
+
+loadGraph();
+</script>
+</body>
+</html>
