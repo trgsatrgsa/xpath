@@ -8,7 +8,28 @@
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: sans-serif; background: #0f1722; color: #d9ebf8; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
 
-  /* tabs bar — tabs left, controls right */
+  /* top bar — icon, version, search, mobile, help */
+  #top-bar {
+    display: flex; align-items: center; gap: 8px;
+    background: #17212d; border-bottom: 1px solid #1e3447;
+    padding: 6px 12px; flex-shrink: 0;
+  }
+  #top-bar h1 { font-size: 0.82rem; color: #67b8df; white-space: nowrap; letter-spacing: 0.03em; }
+  #version-tag { font-size: 0.68rem; color: #1e3447; white-space: nowrap; }
+  #search {
+    flex: 1; background: #0f1722; border: 1px solid #2a3f52; color: #d9ebf8;
+    padding: 4px 9px; border-radius: 6px; font-size: 0.82rem; min-width: 0;
+  }
+  #search:focus { outline: none; border-color: #67b8df; }
+  #mobile-btn {
+    background: none; border: 1px solid #2a3f52; color: #52636d;
+    width: 26px; height: 26px; border-radius: 50%; cursor: pointer;
+    font-size: 0.72rem; font-weight: 700; flex-shrink: 0; transition: all 0.12s;
+    display: flex; align-items: center; justify-content: center; text-decoration: none;
+  }
+  #mobile-btn:hover { border-color: #67b8df; color: #67b8df; }
+
+  /* tabs bar */
   #tabs {
     display: flex; align-items: stretch;
     background: #17212d; border-bottom: 1px solid #2a3f52; flex-shrink: 0;
@@ -22,19 +43,6 @@
   .tab:hover { color: #d9ebf8; background: #1e3447; }
   .tab.active { color: #fff; border-color: #2a3f52; border-bottom: 1px solid #17212d; background: #0f1722; }
   .tab .dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 4px; vertical-align: middle; }
-
-  /* right side of tab bar */
-  #tab-right {
-    display: flex; align-items: center; gap: 8px;
-    padding: 0 12px; border-left: 1px solid #2a3f52; flex-shrink: 0;
-  }
-  #tab-right h1 { font-size: 0.82rem; color: #67b8df; white-space: nowrap; letter-spacing: 0.03em; }
-  #search {
-    background: #0f1722; border: 1px solid #2a3f52; color: #d9ebf8;
-    padding: 4px 9px; border-radius: 6px; font-size: 0.82rem; width: 140px;
-  }
-  #search:focus { outline: none; border-color: #67b8df; }
-  #version-tag { font-size: 0.68rem; color: #1e3447; white-space: nowrap; }
 
   /* floating canvas controls */
   #canvas-controls {
@@ -180,15 +188,15 @@
 </head>
 <body>
 
+<div id="top-bar">
+  <h1>⬡ XPath</h1>
+  <span id="version-tag"></span>
+  <input id="search" type="text" placeholder="Search...">
+  <a href="mobile.html" id="mobile-btn" title="Mobile version">M</a>
+  <button id="help-btn" title="How to use">?</button>
+</div>
 <div id="tabs">
   <div id="tabs-scroll"></div>
-  <div id="tab-right">
-    <span id="version-tag"></span>
-    <h1>⬡ XPath</h1>
-    <input id="search" type="text" placeholder="Search...">
-    <a href="mobile.html" style="font-size:0.7rem;color:#2a3f52;white-space:nowrap;text-decoration:none;border:1px solid #2a3f52;padding:2px 7px;border-radius:5px">Mobile</a>
-    <button id="help-btn" title="How to use">?</button>
-  </div>
 </div>
 <div id="stat-filter-bar"><span class="filter-label">Stats:</span></div>
 

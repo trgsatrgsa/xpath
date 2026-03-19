@@ -120,7 +120,7 @@
     border-radius: 16px 16px 0 0;
     box-shadow: 0 -8px 32px rgba(0,0,0,0.6);
     transform: translateY(100%); transition: transform 0.3s ease;
-    display: flex; flex-direction: column; max-height: 65dvh;
+    display: flex; flex-direction: column; max-height: 42dvh; max-height: 42vh;
   }
   #panel-drawer.open { transform: translateY(0); }
   #drawer-handle {
@@ -420,18 +420,29 @@ function buildStatPicker(nodes) {
   Object.entries(groups).forEach(([groupName, names]) => {
     const col = document.getElementById(colMap[groupName]);
     col.innerHTML = "";
+    // allow native touch scroll within this column without leaking to parent
+    col.addEventListener("touchmove", e => e.stopPropagation(), { passive: true });
     names.forEach(fullName => {
       const item = document.createElement("div");
       item.className = "picker-item" + (activeStats.has(fullName) ? " active" : "");
       item.textContent = shortStat(fullName);
       item.title = fullName;
-      item.addEventListener("click", () => {
+      let _itemTouchY = 0;
+      function toggleStat() {
         if (activeStats.has(fullName)) activeStats.delete(fullName);
         else activeStats.add(fullName);
         item.classList.toggle("active", activeStats.has(fullName));
         updatePickerTitle();
         renderGraph();
-      });
+      }
+      item.addEventListener("touchstart", e => { _itemTouchY = e.touches[0].clientY; }, { passive: true });
+      item.addEventListener("touchend", e => {
+        if (Math.abs(e.changedTouches[0].clientY - _itemTouchY) < 10) {
+          e.preventDefault(); // suppress subsequent click
+          toggleStat();
+        }
+      }, { passive: false });
+      item.addEventListener("click", toggleStat); // desktop fallback
       col.appendChild(item);
     });
   });
@@ -614,7 +625,7 @@ function renderGraph() {
   cy.on("pan zoom", () => {
     if (_panClamping || !_clampBB) return;
     const bb = _clampBB;
-    const zoom = cy.zoom(), margin = 40, p = cy.pan();
+    const zoom = cy.zoom(), margin = 15, p = cy.pan();
     const clampedX = Math.min(Math.max(p.x, margin - bb.x2 * zoom), cy.width()  - margin - bb.x1 * zoom);
     const clampedY = Math.min(Math.max(p.y, margin - bb.y2 * zoom), cy.height() - margin - bb.y1 * zoom);
     if (clampedX !== p.x || clampedY !== p.y) {
