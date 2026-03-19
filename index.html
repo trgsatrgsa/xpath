@@ -48,6 +48,16 @@
   }
   .cv-btn:hover { border-color: #67b8df; color: #67b8df; }
   .cv-btn.active { background: rgba(12,111,146,0.5); border-color: #67b8df; color: #67b8df; }
+  #zoom-slider {
+    -webkit-appearance: none; appearance: none;
+    width: 64px; height: 4px; border-radius: 2px;
+    background: #2a3f52; outline: none; cursor: pointer;
+  }
+  #zoom-slider::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none;
+    width: 12px; height: 12px; border-radius: 50%;
+    background: #67b8df; cursor: pointer;
+  }
   #node-count { font-size: 0.7rem; color: #2a3f52; white-space: nowrap; }
 
   #stat-filter-bar {
@@ -190,7 +200,6 @@
     <h3>Filter</h3>
     <ul>
       <li><span class="key">Tabs</span> — switch slot: Weapon, Armor, Additional, Special, Normal</li>
-      <li><span class="key">Show Enhancers</span> — toggle enhancer crystals on/off</li>
       <li><span class="key">Search</span> — filter by name</li>
       <li><span class="key">Stat chips</span> — click to show crystals with that stat, multi-select</li>
     </ul>
@@ -217,7 +226,9 @@
 <div id="main">
   <div id="cy"></div>
   <div id="canvas-controls">
-    <button class="cv-btn active" id="enhancer-btn" title="Toggle Enhancers">◈</button>
+    <button class="cv-btn" id="zoom-out-btn" title="Zoom Out">−</button>
+    <input type="range" id="zoom-slider" min="0" max="100" value="50" title="Zoom">
+    <button class="cv-btn" id="zoom-in-btn" title="Zoom In">+</button>
     <button class="cv-btn" id="fit-btn" title="Reset View">⊡</button>
     <span id="node-count"></span>
   </div>
@@ -303,8 +314,8 @@ let cy;
 let allNodes = [], allEdges = [], nodeById = {};
 let activeSlot = "All";
 let searchVal = "";
-let showEnhancers = true;
 let activeStats = new Set(); // full stat names
+let initialViewport = null;
 
 /* ── load ── */
 async function loadGraph() {
@@ -495,16 +506,13 @@ function buildLabel(data) {
 
 /* ── render ── */
 function renderGraph() {
-  // showEnhancers is managed by the enhancer-btn toggle
   const slot = SLOTS.find(s => s.key === activeSlot);
 
   let primary = allNodes.filter(n => {
     const t = n.data.crysta_type;
     // slot filter
     if (activeSlot !== "All") {
-      if (t !== slot.base && !(showEnhancers && t === slot.enhancer)) return false;
-    } else {
-      if (!showEnhancers && isEnhancer(t)) return false;
+      if (t !== slot.base && t !== slot.enhancer) return false;
     }
     // search
     if (searchVal && !n.data.name.toLowerCase().includes(searchVal)) return false;
@@ -564,7 +572,7 @@ function renderGraph() {
   cy = cytoscape({
     container: document.getElementById("cy"),
     elements,
-    minZoom: 0.5, maxZoom: 3,
+    minZoom: MIN_ZOOM, maxZoom: MAX_ZOOM,
     style: [
       {
         selector: "node",
@@ -619,6 +627,7 @@ function renderGraph() {
     ],
     layout: { name: "dagre", rankDir: "LR", nodeSep: 28, rankSep: 90, animate: false },
     autoungrabify: true,   // nodes not draggable
+    userZoomingEnabled: false,  // zoom via slider/buttons only
   });
 
   // zoom to first chain component on render
@@ -633,6 +642,8 @@ function renderGraph() {
     } else {
       cy.fit(undefined, 60);
     }
+    initialViewport = { pan: { ...cy.pan() }, zoom: cy.zoom() };
+    syncZoomSlider();
     drawMinimap();
   });
 
@@ -658,7 +669,24 @@ function renderGraph() {
       cy.pan({ x: clampedX, y: p.y });
       _panClamping = false;
     }
+    syncZoomSlider();
   });
+
+  // smooth scroll → vertical pan
+  let _scrollVY = 0, _scrollRaf = null;
+  document.getElementById("cy").addEventListener("wheel", e => {
+    e.preventDefault();
+    _scrollVY += e.deltaY * 0.6;
+    if (!_scrollRaf) tickScroll();
+  }, { passive: false });
+  function tickScroll() {
+    _scrollRaf = requestAnimationFrame(() => {
+      if (Math.abs(_scrollVY) < 0.5) { _scrollRaf = null; return; }
+      cy.panBy({ x: 0, y: -_scrollVY });
+      _scrollVY *= 0.82;
+      tickScroll();
+    });
+  }
 
   cy.on("mouseover", "node", evt => showTooltip(evt.target.data(), evt.originalEvent));
   cy.on("mousemove", "node", evt => moveTooltip(evt.originalEvent));
@@ -669,9 +697,7 @@ function renderGraph() {
   const chipsBase = allNodes.filter(n => {
     const t = n.data.crysta_type;
     if (activeSlot !== "All") {
-      if (t !== slot.base && !(showEnhancers && t === slot.enhancer)) return false;
-    } else {
-      if (!showEnhancers && isEnhancer(t)) return false;
+      if (t !== slot.base && t !== slot.enhancer) return false;
     }
     return !searchVal || n.data.name.toLowerCase().includes(searchVal);
   });
@@ -833,19 +859,33 @@ function clearPanel() {
   document.getElementById("panel").innerHTML = `<p id="placeholder">Click a node to see details</p>`;
 }
 
-document.getElementById("fit-btn").addEventListener("click", () => cy && cy.fit(undefined, 40));
+/* ── zoom slider sync ── */
+const MIN_ZOOM = 0.5, MAX_ZOOM = 3;
+const LOG_MIN = Math.log(MIN_ZOOM), LOG_MAX = Math.log(MAX_ZOOM);
+function zoomFromSlider(val) { return Math.exp(LOG_MIN + (val / 100) * (LOG_MAX - LOG_MIN)); }
+function sliderFromZoom(z)   { return (Math.log(z) - LOG_MIN) / (LOG_MAX - LOG_MIN) * 100; }
+function syncZoomSlider() {
+  if (!cy) return;
+  document.getElementById("zoom-slider").value = sliderFromZoom(cy.zoom());
+}
+function applyZoom(z) {
+  if (!cy) return;
+  const clamped = Math.min(Math.max(z, MIN_ZOOM), MAX_ZOOM);
+  cy.zoom({ level: clamped, renderedPosition: { x: cy.width() / 2, y: cy.height() / 2 } });
+}
+document.getElementById("zoom-slider").addEventListener("input", e => applyZoom(zoomFromSlider(+e.target.value)));
+document.getElementById("zoom-in-btn").addEventListener("click",  () => cy && applyZoom(cy.zoom() * 1.7));
+document.getElementById("zoom-out-btn").addEventListener("click", () => cy && applyZoom(cy.zoom() / 1.7));
+document.getElementById("fit-btn").addEventListener("click", () => {
+  if (!cy || !initialViewport) return;
+  cy.animate({ pan: initialViewport.pan, zoom: initialViewport.zoom, duration: 300, easing: "ease-in-out-cubic" });
+});
 const helpModal = document.getElementById("help-modal");
 document.getElementById("help-btn").addEventListener("click", () => helpModal.classList.add("open"));
 document.getElementById("help-close").addEventListener("click", () => helpModal.classList.remove("open"));
 helpModal.addEventListener("click", e => { if (e.target === e.currentTarget) helpModal.classList.remove("open"); });
 document.addEventListener("keydown", e => { if (e.key === "Escape") helpModal.classList.remove("open"); });
 document.getElementById("search").addEventListener("input", e => { searchVal = e.target.value.toLowerCase(); renderGraph(); clearPanel(); });
-const enhBtn = document.getElementById("enhancer-btn");
-enhBtn.addEventListener("click", () => {
-  showEnhancers = !showEnhancers;
-  enhBtn.classList.toggle("active", showEnhancers);
-  renderGraph(); clearPanel();
-});
 
 loadGraph();
 </script>
