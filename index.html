@@ -7,46 +7,48 @@
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: sans-serif; background: #0f1722; color: #d9ebf8; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
 
-  #topbar {
-    display: flex; align-items: center; gap: 10px;
-    padding: 7px 12px; background: #17212d;
-    border-bottom: 1px solid #2a3f52; flex-shrink: 0; flex-wrap: wrap;
-  }
-  #topbar h1 { font-size: 0.9rem; color: #67b8df; white-space: nowrap; }
-  #search {
-    background: #0f1722; border: 1px solid #2a3f52; color: #d9ebf8;
-    padding: 4px 9px; border-radius: 6px; font-size: 0.82rem; width: 160px;
-  }
-  #fit-btn {
-    background: #1e3447; border: 1px solid #2a3f52; color: #67b8df;
-    padding: 4px 10px; border-radius: 6px; cursor: pointer; font-size: 0.8rem; white-space: nowrap;
-  }
-  #fit-btn:hover { background: #2a3f52; }
-  #enhancer-toggle { display: flex; align-items: center; gap: 5px; font-size: 0.8rem; cursor: pointer; user-select: none; white-space: nowrap; }
-  #enhancer-toggle input { cursor: pointer; accent-color: #67b8df; }
-  #node-count { font-size: 0.75rem; color: #52636d; margin-left: auto; white-space: nowrap; }
-  #version-tag { font-size: 0.7rem; color: #2a3f52; white-space: nowrap; }
-
-  #legend {
-    display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
-    padding: 4px 12px; background: #17212d; border-bottom: 1px solid #2a3f52; flex-shrink: 0;
-  }
-  .legend-item { display: flex; align-items: center; gap: 4px; font-size: 0.72rem; color: #8aa8ba; }
-  .legend-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
-  .legend-enh { width: 9px; height: 9px; border-radius: 2px; border: 1.5px dashed; flex-shrink: 0; opacity: 0.7; }
-
+  /* tabs bar — tabs left, controls right */
   #tabs {
-    display: flex; gap: 2px; padding: 5px 12px 0;
-    background: #17212d; border-bottom: 1px solid #2a3f52; overflow-x: auto; flex-shrink: 0;
+    display: flex; align-items: stretch;
+    background: #17212d; border-bottom: 1px solid #2a3f52; flex-shrink: 0;
   }
+  #tabs-scroll { display: flex; gap: 2px; padding: 5px 0 0 12px; overflow-x: auto; flex: 1; }
   .tab {
     padding: 5px 13px; border-radius: 6px 6px 0 0; cursor: pointer;
     font-size: 0.8rem; color: #52636d; white-space: nowrap;
-    border: 1px solid transparent; border-bottom: none; transition: all 0.12s;
+    border: 1px solid transparent; border-bottom: none; transition: all 0.12s; align-self: flex-end;
   }
   .tab:hover { color: #d9ebf8; background: #1e3447; }
   .tab.active { color: #fff; border-color: #2a3f52; border-bottom: 1px solid #17212d; background: #0f1722; }
   .tab .dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 4px; vertical-align: middle; }
+
+  /* right side of tab bar */
+  #tab-right {
+    display: flex; align-items: center; gap: 8px;
+    padding: 0 12px; border-left: 1px solid #2a3f52; flex-shrink: 0;
+  }
+  #tab-right h1 { font-size: 0.82rem; color: #2a3f52; white-space: nowrap; letter-spacing: 0.03em; }
+  #search {
+    background: #0f1722; border: 1px solid #2a3f52; color: #d9ebf8;
+    padding: 4px 9px; border-radius: 6px; font-size: 0.82rem; width: 140px;
+  }
+  #search:focus { outline: none; border-color: #67b8df; }
+  #version-tag { font-size: 0.68rem; color: #1e3447; white-space: nowrap; }
+
+  /* floating canvas controls */
+  #canvas-controls {
+    position: absolute; top: 12px; right: calc(270px + 12px);
+    display: flex; gap: 6px; align-items: center; z-index: 10;
+  }
+  .cv-btn {
+    background: rgba(15,23,34,0.88); border: 1px solid #2a3f52; color: #52636d;
+    width: 30px; height: 30px; border-radius: 8px; cursor: pointer;
+    font-size: 0.9rem; display: flex; align-items: center; justify-content: center;
+    transition: all 0.12s; backdrop-filter: blur(4px); user-select: none;
+  }
+  .cv-btn:hover { border-color: #67b8df; color: #67b8df; }
+  .cv-btn.active { background: rgba(12,111,146,0.5); border-color: #67b8df; color: #67b8df; }
+  #node-count { font-size: 0.7rem; color: #2a3f52; white-space: nowrap; }
 
   #stat-filter-bar {
     display: flex; flex-direction: column; gap: 3px;
@@ -167,18 +169,15 @@
 </head>
 <body>
 
-<div id="topbar">
-  <h1>⬡ XPath</h1>
-  <input id="search" type="text" placeholder="Search name...">
-  <label id="enhancer-toggle"><input type="checkbox" id="show-enhancer" checked> Show Enhancers</label>
-  <button id="fit-btn">⊡ Reset View</button>
-  <span id="node-count"></span>
-  <span id="version-tag"></span>
-  <button id="help-btn" title="How to use">?</button>
+<div id="tabs">
+  <div id="tabs-scroll"></div>
+  <div id="tab-right">
+    <span id="version-tag"></span>
+    <h1>⬡ XPath</h1>
+    <input id="search" type="text" placeholder="Search...">
+    <button id="help-btn" title="How to use">?</button>
+  </div>
 </div>
-
-<div id="legend"></div>
-<div id="tabs"></div>
 <div id="stat-filter-bar"><span class="filter-label">Stats:</span></div>
 
 <div id="cy-tooltip"></div>
@@ -201,9 +200,7 @@
       <li>Arrow = upgrade direction</li>
       <li>Longer chains appear first</li>
     </ul>
-    <div class="legend-row"><span class="swatch" style="background:#e07b39"></span> Solid — base crystal</div>
-    <div class="legend-row"><span class="swatch dashed" style="border-color:#e07b39"></span> Dashed — enhancer (same slot, higher tier)</div>
-    <div class="legend-row"><span class="swatch" style="background:#2a3f52;opacity:0.4"></span> Faded — cross-slot upgrade target</div>
+    <div id="help-legend"></div>
 
     <h3>Interact</h3>
     <ul>
@@ -219,6 +216,11 @@
 
 <div id="main">
   <div id="cy"></div>
+  <div id="canvas-controls">
+    <button class="cv-btn active" id="enhancer-btn" title="Toggle Enhancers">◈</button>
+    <button class="cv-btn" id="fit-btn" title="Reset View">⊡</button>
+    <span id="node-count"></span>
+  </div>
   <div id="minimap-wrap"><canvas id="minimap"></canvas></div>
   <div id="panel"><p id="placeholder">Click a node to see details</p></div>
 </div>
@@ -320,14 +322,23 @@ async function loadGraph() {
 }
 
 function buildLegend() {
-  document.getElementById("legend").innerHTML = SLOTS.slice(1).map(s =>
-    `<div class="legend-item"><span class="legend-dot" style="background:${s.color}"></span>${s.label} Base</div>` +
-    `<div class="legend-item"><span class="legend-enh" style="border-color:${s.color}"></span>${s.label} Enhancer</div>`
-  ).join("");
+  // inject legend into help modal
+  const legendHtml = `
+    <h3>Slot Colors</h3>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 16px">
+      ${SLOTS.slice(1).map(s => `
+        <div class="legend-row"><span class="swatch" style="background:${s.color}"></span>${s.label}</div>
+        <div class="legend-row"><span class="swatch dashed" style="border-color:${s.color}"></span>${s.label} Enhancer</div>
+      `).join("")}
+    </div>
+    <div style="margin-top:8px">
+      <div class="legend-row"><span class="swatch" style="background:#2a3f52;opacity:0.35"></span>Faded dotted — cross-slot upgrade target</div>
+    </div>`;
+  document.getElementById("help-legend").innerHTML = legendHtml;
 }
 
 function buildTabs() {
-  const bar = document.getElementById("tabs");
+  const bar = document.getElementById("tabs-scroll");
   SLOTS.forEach((s, i) => {
     const div = document.createElement("div");
     div.className = "tab" + (i === 0 ? " active" : "");
@@ -484,7 +495,7 @@ function buildLabel(data) {
 
 /* ── render ── */
 function renderGraph() {
-  showEnhancers = document.getElementById("show-enhancer").checked;
+  // showEnhancers is managed by the enhancer-btn toggle
   const slot = SLOTS.find(s => s.key === activeSlot);
 
   let primary = allNodes.filter(n => {
@@ -808,7 +819,12 @@ document.getElementById("help-close").addEventListener("click", () => helpModal.
 helpModal.addEventListener("click", e => { if (e.target === e.currentTarget) helpModal.classList.remove("open"); });
 document.addEventListener("keydown", e => { if (e.key === "Escape") helpModal.classList.remove("open"); });
 document.getElementById("search").addEventListener("input", e => { searchVal = e.target.value.toLowerCase(); renderGraph(); clearPanel(); });
-document.getElementById("show-enhancer").addEventListener("change", () => { renderGraph(); clearPanel(); });
+const enhBtn = document.getElementById("enhancer-btn");
+enhBtn.addEventListener("click", () => {
+  showEnhancers = !showEnhancers;
+  enhBtn.classList.toggle("active", showEnhancers);
+  renderGraph(); clearPanel();
+});
 
 loadGraph();
 </script>
