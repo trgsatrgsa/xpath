@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Crysta Upgrade Path</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: sans-serif; background: #0f1722; color: #d9ebf8; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+
+  /* top bar */
+  #topbar {
+    display: flex; align-items: center; gap: 10px;
+    padding: 7px 12px; background: #17212d;
+    border-bottom: 1px solid #2a3f52; flex-shrink: 0; flex-wrap: wrap;
+  }
+  #topbar h1 { font-size: 0.9rem; color: #67b8df; white-space: nowrap; }
+  #search {
+    background: #0f1722; border: 1px solid #2a3f52; color: #d9ebf8;
+    padding: 4px 9px; border-radius: 6px; font-size: 0.82rem; width: 160px;
+  }
+  #fit-btn {
+    background: #1e3447; border: 1px solid #2a3f52; color: #67b8df;
+    padding: 4px 10px; border-radius: 6px; cursor: pointer; font-size: 0.8rem; white-space: nowrap;
+  }
+  #fit-btn:hover { background: #2a3f52; }
+  #enhancer-toggle { display: flex; align-items: center; gap: 5px; font-size: 0.8rem; cursor: pointer; user-select: none; white-space: nowrap; }
+  #enhancer-toggle input { cursor: pointer; accent-color: #67b8df; }
+  #node-count { font-size: 0.75rem; color: #52636d; margin-left: auto; white-space: nowrap; }
+
+  /* legend */
+  #legend {
+    display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+    padding: 4px 12px; background: #17212d; border-bottom: 1px solid #2a3f52; flex-shrink: 0;
+  }
+  .legend-item { display: flex; align-items: center; gap: 4px; font-size: 0.72rem; color: #8aa8ba; }
+  .legend-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+  .legend-enh { width: 9px; height: 9px; border-radius: 2px; border: 1.5px dashed; flex-shrink: 0; opacity: 0.7; }
+
+  /* tabs */
+  #tabs {
+    display: flex; gap: 2px; padding: 5px 12px 0;
+    background: #17212d; border-bottom: 1px solid #2a3f52; overflow-x: auto; flex-shrink: 0;
+  }
+  .tab {
+    padding: 5px 13px; border-radius: 6px 6px 0 0; cursor: pointer;
+    font-size: 0.8rem; color: #52636d; white-space: nowrap;
+    border: 1px solid transparent; border-bottom: none; transition: all 0.12s;
+  }
+  .tab:hover { color: #d9ebf8; background: #1e3447; }
+  .tab.active { color: #fff; border-color: #2a3f52; border-bottom: 1px solid #17212d; background: #0f1722; }
+  .tab .dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 4px; vertical-align: middle; }
+
+  /* stat filter chips */
+  #stat-filter-bar {
+    display: flex; gap: 5px; flex-wrap: wrap; align-items: center;
+    padding: 5px 12px; background: #0f1722; border-bottom: 1px solid #1e3447;
+    flex-shrink: 0; max-height: 80px; overflow-y: auto;
+  }
+  #stat-filter-bar .filter-label { font-size: 0.7rem; color: #52636d; white-space: nowrap; }
+  .stat-chip {
+    font-size: 0.72rem; padding: 2px 8px; border-radius: 10px;
+    border: 1px solid #2a3f52; color: #8aa8ba; cursor: pointer;
+    background: #17212d; white-space: nowrap; transition: all 0.1s;
+    user-select: none;
+  }
+  .stat-chip:hover { border-color: #67b8df; color: #d9ebf8; }
+  .stat-chip.active { background: #0c6f92; border-color: #67b8df; color: #fff; }
+
+  /* main */
+  #main { display: flex; flex: 1; overflow: hidden; position: relative; }
+  #cy { flex: 1; }
+
+  /* minimap */
+  #minimap-wrap {
+    position: absolute; bottom: 14px; left: 14px;
+    width: 170px; height: 120px;
+    background: rgba(15,23,34,0.92); border: 1px solid #2a3f52;
+    border-radius: 8px; overflow: hidden; cursor: crosshair;
+  }
+  #minimap { width: 170px; height: 120px; display: block; }
+
+  /* side panel */
+  #panel {
+    width: 270px; background: #17212d; border-left: 1px solid #2a3f52;
+    padding: 13px; overflow-y: auto; display: flex; flex-direction: column;
+    gap: 9px; flex-shrink: 0;
+  }
+  #panel h2 { font-size: 0.92rem; color: #67b8df; word-break: break-word; line-height: 1.4; }
+  .tag { display: inline-block; font-size: 0.7rem; padding: 2px 7px; border-radius: 4px; font-weight: 700; }
+  .badge-enh { font-size: 0.66rem; padding: 1px 5px; border-radius: 3px; background: #1e3447; color: #8aa8ba; border: 1px dashed #2a3f52; }
+  .section-title { font-size: 0.66rem; text-transform: uppercase; letter-spacing: 0.08em; color: #52636d; margin-bottom: 4px; }
+  .stat-row { display: flex; justify-content: space-between; font-size: 0.81rem; padding: 3px 0; border-bottom: 1px solid #1e3447; }
+  .val { color: #7ee8a2; font-weight: 700; }
+  .val.neg { color: #f48a8a; }
+  .drop-row { font-size: 0.78rem; padding: 3px 0; border-bottom: 1px solid #1e3447; line-height: 1.5; }
+  .drop-row .map-name { color: #67b8df; font-size: 0.74rem; }
+  .prop-row { font-size: 0.81rem; display: flex; justify-content: space-between; }
+  .prop-row span:first-child { color: #52636d; }
+  #placeholder { color: #52636d; font-size: 0.83rem; margin-top: 28px; text-align: center; }
+</style>
+</head>
+<body>
+
+<div id="topbar">
+  <h1>⬡ Crysta Upgrade Path</h1>
+  <input id="search" type="text" placeholder="Search name...">
+  <label id="enhancer-toggle"><input type="checkbox" id="show-enhancer" checked> Show Enhancers</label>
+  <button id="fit-btn">⊡ Reset View</button>
+  <span id="node-count"></span>
+</div>
+
+<div id="legend"></div>
+<div id="tabs"></div>
+<div id="stat-filter-bar"><span class="filter-label">Stats:</span></div>
+
+<div id="main">
+  <div id="cy"></div>
+  <div id="minimap-wrap"><canvas id="minimap"></canvas></div>
+  <div id="panel"><p id="placeholder">Click a node to see details</p></div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.29.2/cytoscape.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/dagre/0.8.5/dagre.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/cytoscape-dagre@2.5.0/cytoscape-dagre.min.js"></script>
+<script>
+cytoscape.use(cytoscapeDagre);
+
+const SLOTS = [
+  { key: "All",        label: "All",        color: "#67b8df", base: null,                  enhancer: null },
+  { key: "Weapon",     label: "Weapon",     color: "#e07b39", base: "Weapon Crysta",       enhancer: "Enhancer Crysta (Red)" },
+  { key: "Armor",      label: "Armor",      color: "#5bbf7a", base: "Armor Crysta",        enhancer: "Enhancer Crysta (Green)" },
+  { key: "Additional", label: "Additional", color: "#d4b84a", base: "Additional Crysta",   enhancer: "Enhancer Crysta (Yellow)" },
+  { key: "Special",    label: "Special",    color: "#a97fe0", base: "Special Crysta",      enhancer: "Enhancer Crysta (Purple)" },
+  { key: "Normal",     label: "Normal",     color: "#4fa3d8", base: "Normal Crysta",       enhancer: "Enhancer Crysta (Blue)" },
+];
+const TYPE_TO_SLOT = {};
+SLOTS.forEach(s => { if (s.base) TYPE_TO_SLOT[s.base] = s; if (s.enhancer) TYPE_TO_SLOT[s.enhancer] = s; });
+function slotOf(t) { return TYPE_TO_SLOT[t] || SLOTS[0]; }
+function isEnhancer(t) { return t && t.startsWith("Enhancer"); }
+
+let cy;
+let allNodes = [], allEdges = [], nodeById = {};
+let activeSlot = "All";
+let searchVal = "";
+let showEnhancers = true;
+let activeStats = new Set();  // selected stat filter chips
+
+/* ── data load ── */
+async function loadGraph() {
+  const { nodes, edges } = await fetch("crysta_graph.json").then(r => r.json());
+  allNodes = nodes; allEdges = edges;
+  allNodes.forEach(n => nodeById[n.id] = n);
+  buildLegend(); buildTabs();
+  renderGraph();
+}
+
+/* ── legend ── */
+function buildLegend() {
+  document.getElementById("legend").innerHTML = SLOTS.slice(1).map(s =>
+    `<div class="legend-item"><span class="legend-dot" style="background:${s.color}"></span>${s.label} Base</div>` +
+    `<div class="legend-item"><span class="legend-enh" style="border-color:${s.color}"></span>${s.label} Enhancer</div>`
+  ).join("");
+}
+
+/* ── tabs ── */
+function buildTabs() {
+  const bar = document.getElementById("tabs");
+  SLOTS.forEach((s, i) => {
+    const div = document.createElement("div");
+    div.className = "tab" + (i === 0 ? " active" : "");
+    if (s.key !== "All") div.innerHTML = `<span class="dot" style="background:${s.color}"></span>`;
+    div.appendChild(document.createTextNode(s.label));
+    div.addEventListener("click", () => {
+      document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+      div.classList.add("active");
+      activeSlot = s.key;
+      activeStats.clear();
+      renderGraph(); clearPanel();
+    });
+    bar.appendChild(div);
+  });
+}
+
+/* ── chain depth: longest path from each node ── */
+function computeDepths(nodeIds, edges) {
+  const nodeSet = new Set(nodeIds);
+  const out = {};
+  nodeIds.forEach(id => out[id] = []);
+  edges.forEach(e => { if (nodeSet.has(e.source) && nodeSet.has(e.target)) out[e.source].push(e.target); });
+  const memo = {};
+  function dfs(id) {
+    if (memo[id] !== undefined) return memo[id];
+    memo[id] = 0; // cycle guard
+    const kids = out[id] || [];
+    memo[id] = kids.length ? 1 + Math.max(...kids.map(dfs)) : 0;
+    return memo[id];
+  }
+  nodeIds.forEach(id => dfs(id));
+  return memo;
+}
+
+/* ── connected components ── */
+function connectedComponents(nodeIds, edges) {
+  const nodeSet = new Set(nodeIds);
+  const adj = {};
+  nodeIds.forEach(id => adj[id] = []);
+  edges.forEach(e => {
+    if (nodeSet.has(e.source) && nodeSet.has(e.target)) {
+      adj[e.source].push(e.target);
+      adj[e.target].push(e.source);
+    }
+  });
+  const visited = new Set();
+  const comps = [];
+  nodeIds.forEach(id => {
+    if (visited.has(id)) return;
+    const comp = [];
+    const stack = [id];
+    while (stack.length) {
+      const n = stack.pop();
+      if (visited.has(n)) continue;
+      visited.add(n); comp.push(n);
+      (adj[n] || []).forEach(nb => { if (!visited.has(nb)) stack.push(nb); });
+    }
+    comps.push(comp);
+  });
+  return comps;
+}
+
+/* ── stat filter chips ── */
+function buildStatChips(nodes) {
+  const stats = new Map(); // stat_name -> count
+  nodes.forEach(n => (n.data.stats || []).forEach(s => stats.set(s.stat, (stats.get(s.stat) || 0) + 1)));
+  const sorted = [...stats.entries()].sort((a, b) => b[1] - a[1]);
+
+  const bar = document.getElementById("stat-filter-bar");
+  // remove old chips but keep the label
+  [...bar.querySelectorAll(".stat-chip")].forEach(c => c.remove());
+
+  sorted.forEach(([stat]) => {
+    const chip = document.createElement("span");
+    chip.className = "stat-chip" + (activeStats.has(stat) ? " active" : "");
+    chip.textContent = stat;
+    chip.addEventListener("click", () => {
+      if (activeStats.has(stat)) activeStats.delete(stat);
+      else activeStats.add(stat);
+      chip.classList.toggle("active");
+      applyStatFilter();
+    });
+    bar.appendChild(chip);
+  });
+}
+
+function applyStatFilter() {
+  if (!cy) return;
+  if (activeStats.size === 0) {
+    cy.nodes().style("opacity", null).style("display", "element");
+    cy.edges().style("opacity", null).style("display", "element");
+    return;
+  }
+  cy.nodes().forEach(n => {
+    const stats = n.data("stats") || [];
+    const match = stats.some(s => activeStats.has(s.stat));
+    if (match) {
+      n.style("opacity", null);
+      n.style("display", "element");
+    } else {
+      n.style("opacity", 0.1);
+    }
+  });
+  // dim edges where source doesn't match
+  cy.edges().forEach(e => {
+    const srcMatch = (e.source().data("stats") || []).some(s => activeStats.has(s.stat));
+    e.style("opacity", srcMatch ? null : 0.05);
+  });
+}
+
+/* ── node label builder ── */
+function buildLabel(data) {
+  let label = data.name;
+  // top 2 stats
+  const stats = data.stats || [];
+  if (stats.length) {
+    const parts = stats.slice(0, 2).map(s => {
+      const v = parseFloat(s.amount);
+      const sign = v > 0 ? "+" : "";
+      return `${s.stat} ${sign}${s.amount}`;
+    });
+    label += "\n" + parts.join("  ");
+  }
+  // first drop source
+  const drops = data.drop_sources || [];
+  if (drops.length) {
+    const d = drops[0];
+    const lvl = d.level ? ` Lv${d.level}` : "";
+    const name = d.monster ? d.monster.split(" ").slice(0, 3).join(" ") : "?";
+    label += "\n" + name + lvl;
+  }
+  return label;
+}
+
+/* ── main render ── */
+function renderGraph() {
+  showEnhancers = document.getElementById("show-enhancer").checked;
+  const slot = SLOTS.find(s => s.key === activeSlot);
+
+  let primary = allNodes.filter(n => {
+    const t = n.data.crysta_type;
+    if (activeSlot !== "All") {
+      const inBase = t === slot.base;
+      const inEnh = showEnhancers && t === slot.enhancer;
+      if (!inBase && !inEnh) return false;
+    } else {
+      if (!showEnhancers && isEnhancer(t)) return false;
+    }
+    return !searchVal || n.data.name.toLowerCase().includes(searchVal);
+  });
+
+  // chain depths for sorting
+  const primaryIds = primary.map(n => n.id);
+  const depths = computeDepths(primaryIds, allEdges);
+
+  // sort components by max depth desc (longest chain first)
+  const visibleEdgesForComp = allEdges.filter(e => new Set(primaryIds).has(e.source) && new Set(primaryIds).has(e.target));
+  const comps = connectedComponents(primaryIds, visibleEdgesForComp);
+  comps.sort((a, b) => Math.max(...b.map(id => depths[id] || 0)) - Math.max(...a.map(id => depths[id] || 0)));
+  const sortedIds = comps.flat();
+  const sortOrder = {};
+  sortedIds.forEach((id, i) => sortOrder[id] = i);
+  primary = primary.sort((a, b) => (sortOrder[a.id] || 0) - (sortOrder[b.id] || 0));
+
+  const primaryIdSet = new Set(primary.map(n => n.id));
+
+  // cross-slot stubs
+  const stubIds = new Set();
+  allEdges.forEach(e => {
+    if (primaryIdSet.has(e.source) && !primaryIdSet.has(e.target)) stubIds.add(e.target);
+  });
+
+  const visEdges = allEdges.filter(e => primaryIdSet.has(e.source) && (primaryIdSet.has(e.target) || stubIds.has(e.target)));
+  const stubNodes = [...stubIds].map(id => nodeById[id]).filter(Boolean);
+
+  const elements = [
+    ...primary.map(n => ({
+      data: {
+        id: n.id, label: buildLabel(n.data),
+        stub: false, enhancer: isEnhancer(n.data.crysta_type),
+        slot_color: slotOf(n.data.crysta_type).color,
+        chain_depth: depths[n.id] || 0,
+        ...n.data,
+      }
+    })),
+    ...stubNodes.map(n => ({
+      data: {
+        id: n.id, label: n.data.name,
+        stub: true, enhancer: isEnhancer(n.data.crysta_type),
+        slot_color: slotOf(n.data.crysta_type).color,
+        chain_depth: 0,
+        ...n.data,
+      }
+    })),
+    ...visEdges.map(e => ({ data: { id: e.id, source: e.source, target: e.target } }))
+  ];
+
+  document.getElementById("node-count").textContent =
+    `${primary.length} nodes${stubIds.size ? ` + ${stubIds.size} stubs` : ""}`;
+
+  if (cy) cy.destroy();
+
+  cy = cytoscape({
+    container: document.getElementById("cy"),
+    elements,
+    minZoom: 0.15,
+    maxZoom: 3,
+    style: [
+      {
+        selector: "node",
+        style: {
+          "background-color": ele => ele.data("slot_color"),
+          "label": "data(label)",
+          "color": "#fff",
+          "font-size": "10px",
+          "text-valign": "center",
+          "text-halign": "center",
+          "text-wrap": "wrap",
+          "text-max-width": "138px",
+          "width": "150px",
+          "height": "68px",
+          "shape": "round-rectangle",
+          "border-width": 2,
+          "border-color": "#2a3f52",
+        }
+      },
+      {
+        selector: "node[?enhancer]",
+        style: {
+          "opacity": 0.78,
+          "border-style": "dashed",
+          "border-width": 2,
+          "border-color": ele => ele.data("slot_color"),
+          "background-color": "#111d2b",
+          "color": ele => ele.data("slot_color"),
+        }
+      },
+      {
+        selector: "node[?stub]",
+        style: { "opacity": 0.35, "border-style": "dotted", "font-style": "italic" }
+      },
+      {
+        selector: "node:selected",
+        style: { "border-color": "#fff", "border-width": 3, "opacity": 1 }
+      },
+      {
+        selector: "edge",
+        style: {
+          "width": 2, "line-color": "#2a3f52",
+          "target-arrow-color": "#67b8df",
+          "target-arrow-shape": "triangle",
+          "curve-style": "bezier",
+        }
+      }
+    ],
+    layout: {
+      name: "dagre", rankDir: "LR", nodeSep: 28, rankSep: 90, animate: false,
+    }
+  });
+
+  // initial zoom: fit first component (longest chain) instead of all
+  cy.ready(() => {
+    const firstCompIds = comps[0] || [];
+    if (firstCompIds.length) {
+      const firstNodes = cy.nodes().filter(n => firstCompIds.includes(n.id()));
+      cy.fit(firstNodes, 60);
+      if (cy.zoom() > 1.4) cy.zoom(1.4);
+    } else {
+      cy.fit(undefined, 60);
+    }
+    setupMinimap();
+  });
+
+  cy.on("tap", "node", evt => showPanel(evt.target.data()));
+  cy.on("tap", evt => { if (evt.target === cy) clearPanel(); });
+  cy.on("viewport render", drawMinimap);
+
+  // rebuild stat chips based on current primary nodes
+  buildStatChips(primary);
+  if (activeStats.size) applyStatFilter();
+}
+
+/* ── minimap ── */
+let minimapSetup = false;
+function setupMinimap() {
+  const canvas = document.getElementById("minimap");
+  canvas.addEventListener("click", e => {
+    const rect = canvas.getBoundingClientRect();
+    const mx = e.clientX - rect.left;
+    const my = e.clientY - rect.top;
+    const bb = cy.elements().boundingBox();
+    if (!bb || !bb.w) return;
+    const s = Math.min(164 / bb.w, 114 / bb.h);
+    const worldX = (mx - 3) / s + bb.x1;
+    const worldY = (my - 3) / s + bb.y1;
+    cy.animate({ center: { eles: null }, pan: {
+      x: cy.width() / 2 - worldX * cy.zoom(),
+      y: cy.height() / 2 - worldY * cy.zoom(),
+    }, duration: 200 });
+  });
+  drawMinimap();
+}
+
+function drawMinimap() {
+  if (!cy) return;
+  const canvas = document.getElementById("minimap");
+  const W = 170, H = 120;
+  canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext("2d");
+  ctx.clearRect(0, 0, W, H);
+
+  const bb = cy.elements().boundingBox();
+  if (!bb || !bb.w) return;
+  const pad = 3;
+  const s = Math.min((W - pad * 2) / bb.w, (H - pad * 2) / bb.h);
+
+  const wx = n => (n.position("x") - bb.x1) * s + pad;
+  const wy = n => (n.position("y") - bb.y1) * s + pad;
+
+  // edges
+  ctx.strokeStyle = "#2a3f52"; ctx.lineWidth = 0.5;
+  cy.edges().forEach(e => {
+    const sp = e.source().position(), tp = e.target().position();
+    ctx.beginPath();
+    ctx.moveTo((sp.x - bb.x1) * s + pad, (sp.y - bb.y1) * s + pad);
+    ctx.lineTo((tp.x - bb.x1) * s + pad, (tp.y - bb.y1) * s + pad);
+    ctx.stroke();
+  });
+
+  // nodes
+  cy.nodes().forEach(n => {
+    ctx.globalAlpha = n.data("stub") ? 0.25 : (n.data("enhancer") ? 0.55 : 0.9);
+    ctx.fillStyle = n.data("slot_color") || "#67b8df";
+    ctx.fillRect(wx(n) - 4, wy(n) - 2, 9, 4);
+    ctx.globalAlpha = 1;
+  });
+
+  // viewport rect
+  const pan = cy.pan(), zoom = cy.zoom();
+  const vx = (-pan.x / zoom - bb.x1) * s + pad;
+  const vy = (-pan.y / zoom - bb.y1) * s + pad;
+  const vw = (cy.width() / zoom) * s;
+  const vh = (cy.height() / zoom) * s;
+  ctx.strokeStyle = "#67b8df"; ctx.lineWidth = 1; ctx.globalAlpha = 0.8;
+  ctx.strokeRect(vx, vy, vw, vh);
+  ctx.globalAlpha = 1;
+}
+
+/* ── panel ── */
+function showPanel(data) {
+  const color = slotOf(data.crysta_type).color;
+  let html = `<h2>${data.name}</h2>`;
+  html += `<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">`;
+  html += `<span class="tag" style="background:${color}22;color:${color};border:1px solid ${color}55">${data.crysta_type || "?"}</span>`;
+  if (isEnhancer(data.crysta_type)) html += `<span class="badge-enh">Enhancer</span>`;
+  if (data.chain_depth > 0) html += `<span style="font-size:0.7rem;color:#52636d">⬡ chain ${data.chain_depth}</span>`;
+  if (data.stub) html += `<span style="font-size:0.7rem;color:#c47f2a">⚠ cross-slot</span>`;
+  html += `</div>`;
+
+  if (data.sell_amount != null || data.process_amount != null) {
+    html += `<div>`;
+    if (data.sell_amount != null)
+      html += `<div class="prop-row"><span>Sell</span><span>${data.sell_amount} ${data.sell_unit || ""}</span></div>`;
+    if (data.process_amount != null)
+      html += `<div class="prop-row"><span>Process</span><span>${data.process_amount} ${data.process_type || ""}</span></div>`;
+    html += `</div>`;
+  }
+
+  if (data.stats && data.stats.length) {
+    html += `<div><p class="section-title">Stat / Effect</p>`;
+    data.stats.forEach(s => {
+      const neg = parseFloat(s.amount) < 0;
+      html += `<div class="stat-row"><span>${s.stat}</span><span class="val${neg ? " neg" : ""}">${s.amount}</span></div>`;
+    });
+    html += `</div>`;
+  }
+
+  if (data.drop_sources && data.drop_sources.length) {
+    html += `<div><p class="section-title">Obtained From</p>`;
+    data.drop_sources.forEach(d => {
+      html += `<div class="drop-row">
+        ${d.monster || "?"}${d.level ? ` <span style="color:#52636d">(Lv ${d.level})</span>` : ""}
+        ${d.dye ? ` <span style="color:#c4a84f">[${d.dye}]</span>` : ""}
+        <br><span class="map-name">${d.map || "?"}</span>
+      </div>`;
+    });
+    html += `</div>`;
+  }
+
+  if (data.item_url)
+    html += `<a href="https://coryn.club/${data.item_url}" target="_blank" style="color:#67b8df;font-size:0.78rem">View on Coryn Club ↗</a>`;
+
+  document.getElementById("panel").innerHTML = html;
+}
+
+function clearPanel() {
+  document.getElementById("panel").innerHTML = `<p id="placeholder">Click a node to see details</p>`;
+}
+
+/* ── controls ── */
+document.getElementById("fit-btn").addEventListener("click", () => cy && cy.fit(undefined, 40));
+document.getElementById("search").addEventListener("input", e => { searchVal = e.target.value.toLowerCase(); renderGraph(); clearPanel(); });
+document.getElementById("show-enhancer").addEventListener("change", () => { renderGraph(); clearPanel(); });
+
+loadGraph();
+</script>
+</body>
+</html>
