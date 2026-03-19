@@ -2,14 +2,12 @@
 """
 Export crystal upgrade graph from items.db -> crysta_graph.json
 
-Output format is ready for xyflow (React Flow):
-  nodes[] - one per crystal, carries all stats + drop sources in data{}
-  edges[] - one per "Upgrade Into" relationship
-
-Run: python export_crysta.py [--type "Weapon Crysta"]
-  --type  filter to a specific crysta type (default: all crysta types)
-  --db    path to sqlite db (default: items.db)
-  --out   output json path (default: crysta_graph.json)
+Run: python export_crysta.py [options]
+  --type            filter to a specific crysta type (default: all crysta types)
+  --db              path to sqlite db (default: items.db)
+  --out             output json path (default: crysta_graph.json)
+  --links-fix       path to manual edge override file (default: links_fix.json)
+  --check-orphans   print enhancer crystals with no incoming edge and exit
 """
 
 import json
@@ -17,31 +15,34 @@ import sqlite3
 import argparse
 from pathlib import Path
 
-DB_PATH = Path("items.db")
-OUT_PATH = Path("crysta_graph.json")
+DB_PATH        = Path("items.db")
+OUT_PATH       = Path("crysta_graph.json")
+LINKS_FIX_PATH = Path("links_fix.json")
+
+ENHANCER_TYPES = {
+    "Enhancer Crysta (Red)",
+    "Enhancer Crysta (Green)",
+    "Enhancer Crysta (Yellow)",
+    "Enhancer Crysta (Purple)",
+    "Enhancer Crysta (Blue)",
+}
 
 
 def fetch_crystas(conn, type_filter=None):
     if type_filter:
-        rows = conn.execute(
+        return conn.execute(
             "SELECT id, name, type, item_url, image_url, sell_amount, sell_unit, process_amount, process_type "
-            "FROM items WHERE type = ?",
-            (type_filter,)
+            "FROM items WHERE type = ?", (type_filter,)
         ).fetchall()
-    else:
-        rows = conn.execute(
-            "SELECT id, name, type, item_url, image_url, sell_amount, sell_unit, process_amount, process_type "
-            "FROM items WHERE type LIKE '%Crysta%'"
-        ).fetchall()
-    return rows
+    return conn.execute(
+        "SELECT id, name, type, item_url, image_url, sell_amount, sell_unit, process_amount, process_type "
+        "FROM items WHERE type LIKE '%Crysta%'"
+    ).fetchall()
 
 
 def fetch_stats(conn, item_ids):
-    placeholders = ",".join("?" * len(item_ids))
-    rows = conn.execute(
-        f"SELECT item_id, stat_name, amount FROM item_stats WHERE item_id IN ({placeholders})",
-        item_ids
-    ).fetchall()
+    ph = ",".join("?" * len(item_ids))
+    rows = conn.execute(f"SELECT item_id, stat_name, amount FROM item_stats WHERE item_id IN ({ph})", item_ids).fetchall()
     result = {}
     for item_id, stat_name, amount in rows:
         result.setdefault(item_id, []).append({"stat": stat_name, "amount": amount})
@@ -49,37 +50,75 @@ def fetch_stats(conn, item_ids):
 
 
 def fetch_drops(conn, item_ids):
-    placeholders = ",".join("?" * len(item_ids))
+    ph = ",".join("?" * len(item_ids))
     rows = conn.execute(
         f"SELECT item_id, monster_name, monster_level, monster_id, map_name, map_id, dye "
-        f"FROM drop_sources WHERE item_id IN ({placeholders})",
-        item_ids
+        f"FROM drop_sources WHERE item_id IN ({ph})", item_ids
     ).fetchall()
     result = {}
     for item_id, monster_name, monster_level, monster_id, map_name, map_id, dye in rows:
         result.setdefault(item_id, []).append({
-            "monster": monster_name,
-            "level": monster_level,
-            "monster_id": monster_id,
-            "map": map_name,
-            "map_id": map_id,
-            "dye": dye,
+            "monster": monster_name, "level": monster_level,
+            "monster_id": monster_id, "map": map_name, "map_id": map_id, "dye": dye,
         })
     return result
 
 
 def fetch_upgrade_edges(conn, item_ids):
-    """Returns edges where source crysta upgrades into target crysta."""
-    placeholders = ",".join("?" * len(item_ids))
-    rows = conn.execute(
+    ph = ",".join("?" * len(item_ids))
+    return conn.execute(
         f"SELECT item_id, target_id, target_name FROM used_for "
-        f"WHERE item_id IN ({placeholders}) AND category = 'Upgrade Into'",
-        item_ids
+        f"WHERE item_id IN ({ph}) AND category = 'Upgrade Into'", item_ids
     ).fetchall()
-    return rows
 
 
-def build_graph(conn, type_filter=None):
+def load_links_fix(path: Path):
+    """Load manual edge overrides. Returns list of (source_id, target_id, note)."""
+    if not path.exists():
+        return []
+    entries = json.loads(path.read_text())
+    result = []
+    for e in entries:
+        sid = e.get("source_id")
+        tid = e.get("target_id")
+        if sid and tid and not e.get("_todo") and not e.get("_skip"):  # skip placeholders/todos
+            result.append((int(sid), int(tid), e.get("note", "")))
+    return result
+
+
+def check_orphan_enhancers(conn):
+    """Print enhancer crystals that have no base crystal pointing to them."""
+    enhancers = conn.execute(
+        "SELECT id, name, type FROM items WHERE type LIKE 'Enhancer Crysta%'"
+    ).fetchall()
+
+    # find which enhancer ids appear as targets in used_for
+    has_parent = set(
+        row[0] for row in conn.execute(
+            "SELECT target_id FROM used_for WHERE category = 'Upgrade Into'"
+        ).fetchall()
+    )
+
+    orphans = [(eid, name, etype) for eid, name, etype in enhancers if eid not in has_parent]
+
+    if not orphans:
+        print("No orphan enhancers found — all have a base crystal pointing to them.")
+        return
+
+    print(f"Found {len(orphans)} enhancer(s) with no incoming upgrade link:\n")
+    print(f"{'ID':<8} {'Type':<30} Name")
+    print("-" * 70)
+    for eid, name, etype in orphans:
+        print(f"{eid:<8} {etype:<30} {name}")
+    print(f"\nAdd entries to links_fix.json to fix these:")
+    print(json.dumps([{
+        "source_id": None, "source_name": "base crystal name here",
+        "target_id": eid, "target_name": name, "note": "manual fix"
+    } for eid, name, _ in orphans[:3]], indent=2))
+    print("  ...")
+
+
+def build_graph(conn, type_filter=None, fix_edges=None):
     crystas = fetch_crystas(conn, type_filter)
     if not crystas:
         print("No crystas found. Run parse_items.py first.")
@@ -90,24 +129,27 @@ def build_graph(conn, type_filter=None):
     drops_map = fetch_drops(conn, item_ids)
     upgrade_rows = fetch_upgrade_edges(conn, item_ids)
 
-    # Build node id set for edge filtering (only include edges within this set)
-    id_set = set(item_ids)
+    # inject manual fix edges as if they came from the DB
+    fix_edges = fix_edges or []
+    injected = 0
+    for src, tgt, note in fix_edges:
+        upgrade_rows.append((src, tgt, f"[fix] {note}"))
+        injected += 1
+    if injected:
+        print(f"  Injected {injected} edge(s) from links_fix.json")
 
+    id_set = set(item_ids)
     nodes = []
     for item_id, name, item_type, item_url, image_url, sell_amount, sell_unit, process_amount, process_type in crystas:
         nodes.append({
             "id": str(item_id),
-            "type": "crystaNode",          # custom node type for xyflow
-            "position": {"x": 0, "y": 0},  # layout handled by xyflow/dagre
+            "type": "crystaNode",
+            "position": {"x": 0, "y": 0},
             "data": {
-                "name": name,
-                "crysta_type": item_type,
-                "item_url": item_url,
-                "image_url": image_url,
-                "sell_amount": sell_amount,
-                "sell_unit": sell_unit,
-                "process_amount": process_amount,
-                "process_type": process_type,
+                "name": name, "crysta_type": item_type,
+                "item_url": item_url, "image_url": image_url,
+                "sell_amount": sell_amount, "sell_unit": sell_unit,
+                "process_amount": process_amount, "process_type": process_type,
                 "stats": stats_map.get(item_id, []),
                 "drop_sources": drops_map.get(item_id, []),
             },
@@ -118,67 +160,59 @@ def build_graph(conn, type_filter=None):
     for source_id, target_id, target_name in upgrade_rows:
         if target_id is None:
             continue
-        # target may not be a crysta in our set — still include it as a node stub
         edge_id = f"e{source_id}-{target_id}"
         if edge_id in seen:
             continue
         seen.add(edge_id)
 
-        # if target not in our fetched set, add a stub node so graph is complete
         if target_id not in id_set:
             id_set.add(target_id)
-            # fetch minimal info for the stub
             stub = conn.execute(
                 "SELECT id, name, type, item_url, image_url FROM items WHERE id = ?", (target_id,)
             ).fetchone()
             if stub:
                 nodes.append({
-                    "id": str(stub[0]),
-                    "type": "crystaNode",
-                    "position": {"x": 0, "y": 0},
+                    "id": str(stub[0]), "type": "crystaNode", "position": {"x": 0, "y": 0},
                     "data": {
-                        "name": stub[1],
-                        "crysta_type": stub[2],
-                        "item_url": stub[3],
-                        "image_url": stub[4],
+                        "name": stub[1], "crysta_type": stub[2],
+                        "item_url": stub[3], "image_url": stub[4],
                         "stats": stats_map.get(stub[0], []),
                         "drop_sources": drops_map.get(stub[0], []),
                     },
                 })
             else:
-                # unknown item, minimal stub
                 nodes.append({
-                    "id": str(target_id),
-                    "type": "crystaNode",
-                    "position": {"x": 0, "y": 0},
-                    "data": {"name": target_name, "crysta_type": None},
+                    "id": str(target_id), "type": "crystaNode", "position": {"x": 0, "y": 0},
+                    "data": {"name": str(target_name), "crysta_type": None},
                 })
 
-        edges.append({
-            "id": edge_id,
-            "source": str(source_id),
-            "target": str(target_id),
-            "label": "Upgrade Into",
-            "animated": True,
-        })
+        edges.append({"id": edge_id, "source": str(source_id), "target": str(target_id), "label": "Upgrade Into", "animated": True})
 
     return {"nodes": nodes, "edges": edges}
 
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--type", default=None, help="Filter crysta type e.g. 'Weapon Crysta'")
-    parser.add_argument("--db", default=str(DB_PATH))
-    parser.add_argument("--out", default=str(OUT_PATH))
+    parser.add_argument("--type",          default=None,              help="Filter crysta type e.g. 'Weapon Crysta'")
+    parser.add_argument("--db",            default=str(DB_PATH))
+    parser.add_argument("--out",           default=str(OUT_PATH))
+    parser.add_argument("--links-fix",     default=str(LINKS_FIX_PATH))
+    parser.add_argument("--check-orphans", action="store_true",       help="Print enhancers with no base crystal and exit")
     args = parser.parse_args()
 
     conn = sqlite3.connect(args.db)
-    graph = build_graph(conn, args.type)
+
+    if args.check_orphans:
+        check_orphan_enhancers(conn)
+        conn.close()
+        return
+
+    fix_edges = load_links_fix(Path(args.links_fix))
+    graph = build_graph(conn, args.type, fix_edges)
     conn.close()
 
     out = Path(args.out)
     out.write_text(json.dumps(graph, indent=2, ensure_ascii=False))
-
     print(f"Exported {len(graph['nodes'])} nodes, {len(graph['edges'])} edges -> {out}")
     if args.type:
         print(f"  Filtered to: {args.type}")

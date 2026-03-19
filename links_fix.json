@@ -1,0 +1,82 @@
+[
+  {
+    "source_id": 2249,
+    "source_name": "Zega II",
+    "target_id": 3479,
+    "target_name": "Zega III",
+    "note": "confirmed: Zega upgrade chain Zega→II→III→IV→V→VI→VII"
+  },
+  {
+    "source_id": 3625,
+    "source_name": "Seele Zauga",
+    "target_id": 7608,
+    "target_name": "Seele Zauga II",
+    "note": "confirmed: naming pattern + DB"
+  },
+  {
+    "source_id": 6729,
+    "source_name": "Hero Potum III",
+    "target_id": 7893,
+    "target_name": "Hero Potum IV",
+    "note": "confirmed: naming pattern + DB (chain: Hero Potum→II→III→IV)"
+  },
+  {
+    "source_id": 6593,
+    "source_name": "Melancia",
+    "target_id": 7512,
+    "target_name": "Raging Dragon Bovinari",
+    "note": "confirmed: toram online web source"
+  },
+  {
+    "source_id": 5768,
+    "source_name": "Devil Dango",
+    "target_id": 7366,
+    "target_name": "Diark",
+    "note": "confirmed: Devil Dango (Weapon Crysta) upgrades into Diark or Fubbit"
+  },
+
+  {
+    "_todo": true,
+    "source_id": null,
+    "source_name": "??? - check in game",
+    "target_id": 8277,
+    "target_name": "Zega X",
+    "note": "TODO: Zega VII is last known in DB (id 6779), VIII and IX may be missing from scrape"
+  },
+  {
+    "_todo": true,
+    "source_id": null,
+    "source_name": "??? - check in game",
+    "target_id": 8173,
+    "target_name": "Shadow Devil Cavalier",
+    "note": "TODO: no source found online or raffydb"
+  },
+  {
+    "source_id": 3704,
+    "source_name": "Iron Empress",
+    "target_id": 8207,
+    "target_name": "Merzehal",
+    "note": "confirmed: raffydb.com/crysta/armorenhancercrysta/637/merzehal/"
+  },
+  {
+    "_skip": true,
+    "source_id": null,
+    "target_id": 8229,
+    "target_name": "Stormun",
+    "note": "RaffyDB classifies as base Weapon Crysta (not enhancer). Coryn Club says Enhancer Crysta (Red). Classification mismatch — no base crystal to link. raffydb.com/crysta/weaponcrysta/629/stormun/"
+  },
+  {
+    "_skip": true,
+    "source_id": null,
+    "target_id": 7511,
+    "target_name": "Jiva",
+    "note": "Standalone enhancer — no upgrade path. Obtained directly from drop. raffydb.com/crysta/additionalenhancercrysta/493/jiva/"
+  },
+  {
+    "_skip": true,
+    "source_id": null,
+    "target_id": 8056,
+    "target_name": "Pillorocas",
+    "note": "Standalone enhancer — no upgrade path. Obtained directly from drop. raffydb.com/crysta/additionalenhancercrysta/486/pillorocas/"
+  }
+]

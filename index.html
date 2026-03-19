@@ -25,6 +25,7 @@
   #enhancer-toggle { display: flex; align-items: center; gap: 5px; font-size: 0.8rem; cursor: pointer; user-select: none; white-space: nowrap; }
   #enhancer-toggle input { cursor: pointer; accent-color: #67b8df; }
   #node-count { font-size: 0.75rem; color: #52636d; margin-left: auto; white-space: nowrap; }
+  #version-tag { font-size: 0.7rem; color: #2a3f52; white-space: nowrap; }
 
   #legend {
     display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
@@ -110,8 +111,8 @@
     padding: 24px 28px; max-width: 520px; width: 92%; max-height: 85vh;
     overflow-y: auto; position: relative; color: #d9ebf8;
   }
-  #help-box h2 { font-size: 1.1rem; color: #67b8df; margin-bottom: 4px; }
-  #help-box .subtitle { font-size: 0.78rem; color: #52636d; margin-bottom: 18px; }
+  #help-box h2 { font-size: 1rem; color: #67b8df; margin-bottom: 14px; }
+  #help-box h2 .subtitle { font-size: 0.78rem; color: #52636d; font-weight: normal; }
   #help-box h3 { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.08em; color: #52636d; margin: 16px 0 6px; }
   #help-box p, #help-box li { font-size: 0.83rem; line-height: 1.65; color: #b0c8d8; }
   #help-box ul { padding-left: 16px; display: flex; flex-direction: column; gap: 4px; }
@@ -166,6 +167,7 @@
   <label id="enhancer-toggle"><input type="checkbox" id="show-enhancer" checked> Show Enhancers</label>
   <button id="fit-btn">⊡ Reset View</button>
   <span id="node-count"></span>
+  <span id="version-tag"></span>
   <button id="help-btn" title="How to use">?</button>
 </div>
 
@@ -178,40 +180,34 @@
 <div id="help-modal">
   <div id="help-box">
     <button id="help-close" title="Close">×</button>
-    <h2>XPath</h2>
-    <p class="subtitle">Xtal Upgrade Path Viewer — Toram Online</p>
+    <h2>XPath <span class="subtitle">— Xtal Upgrade Path</span></h2>
 
-    <h3>Browsing crystals</h3>
+    <h3>Filter</h3>
     <ul>
-      <li>Use the <span class="key">tabs</span> at the top to switch between crystal slots — Weapon, Armor, Additional, Special, Normal.</li>
-      <li>Toggle <span class="key">Show Enhancers</span> to include or hide enhancer crystals within the same tab.</li>
-      <li>Type in the <span class="key">search box</span> to filter crystals by name.</li>
-      <li>Click a <span class="key">stat chip</span> below the tabs to show only crystals that carry that stat. You can select multiple chips at once.</li>
+      <li><span class="key">Tabs</span> — switch slot: Weapon, Armor, Additional, Special, Normal</li>
+      <li><span class="key">Show Enhancers</span> — toggle enhancer crystals on/off</li>
+      <li><span class="key">Search</span> — filter by name</li>
+      <li><span class="key">Stat chips</span> — click to show crystals with that stat, multi-select</li>
     </ul>
 
-    <h3>Reading the graph</h3>
+    <h3>Graph</h3>
     <ul>
-      <li>Arrows show the upgrade direction — from a crystal to what it becomes.</li>
-      <li>Crystals in longer upgrade chains appear first (top of the graph).</li>
+      <li>Arrow = upgrade direction</li>
+      <li>Longer chains appear first</li>
     </ul>
-    <div class="legend-row"><span class="swatch" style="background:#e07b39"></span> Solid node — base crystal</div>
-    <div class="legend-row"><span class="swatch dashed" style="border-color:#e07b39"></span> Dashed node — enhancer crystal (same slot, different tier)</div>
-    <div class="legend-row"><span class="swatch" style="background:#2a3f52;opacity:0.4"></span> Faded dotted — upgrade target from a different slot (shown to keep arrow intact)</div>
+    <div class="legend-row"><span class="swatch" style="background:#e07b39"></span> Solid — base crystal</div>
+    <div class="legend-row"><span class="swatch dashed" style="border-color:#e07b39"></span> Dashed — enhancer (same slot, higher tier)</div>
+    <div class="legend-row"><span class="swatch" style="background:#2a3f52;opacity:0.4"></span> Faded — cross-slot upgrade target</div>
 
-    <h3>Getting details</h3>
+    <h3>Interact</h3>
     <ul>
-      <li><strong>Hover</strong> a crystal — tooltip shows all stats and drop sources inline.</li>
-      <li><strong>Click</strong> a crystal — side panel shows full details including sell value, process material, and a direct link to Coryn Club.</li>
-    </ul>
-
-    <h3>Navigation</h3>
-    <ul>
-      <li><span class="key">Reset View</span> button — bring everything back into view if you get lost.</li>
-      <li><span class="key">Minimap</span> (bottom-left corner) — overview of the full graph. Click anywhere on it to jump there.</li>
-      <li>Scroll to zoom, drag the background to pan.</li>
+      <li><strong>Hover</strong> — quick stats + drops tooltip</li>
+      <li><strong>Click</strong> — full detail in side panel</li>
+      <li><strong>Scroll</strong> zoom &nbsp;·&nbsp; <strong>Drag</strong> pan &nbsp;·&nbsp; <span class="key">Reset View</span> to re-center</li>
+      <li>Minimap bottom-left — click to jump</li>
     </ul>
 
-    <p class="footer-note">XPath — Xtal Upgrade Path &nbsp;|&nbsp; Data sourced from <a href="https://coryn.club" target="_blank" style="color:#67b8df">coryn.club</a> &nbsp;|&nbsp; Licensed under GPL-2.0</p>
+    <p class="footer-note">Data from <a href="https://coryn.club" target="_blank" style="color:#67b8df">coryn.club</a> &nbsp;·&nbsp; GPL-2.0</p>
   </div>
 </div>
 
@@ -304,6 +300,12 @@ let activeStats = new Set(); // full stat names
 
 /* ── load ── */
 async function loadGraph() {
+  fetch("version.json").then(r => r.json()).then(v => {
+    document.getElementById("version-tag").textContent = `v${v.version}`;
+    document.querySelector("#help-box .footer-note").innerHTML =
+      `XPath v${v.version} &nbsp;|&nbsp; Data sourced from <a href="https://coryn.club" target="_blank" style="color:#67b8df">coryn.club</a> &nbsp;|&nbsp; GPL-2.0`;
+  }).catch(() => {});
+
   const { nodes, edges } = await fetch("crysta_graph.json").then(r => r.json());
   allNodes = nodes; allEdges = edges;
   allNodes.forEach(n => nodeById[n.id] = n);
@@ -755,9 +757,11 @@ function clearPanel() {
 }
 
 document.getElementById("fit-btn").addEventListener("click", () => cy && cy.fit(undefined, 40));
-document.getElementById("help-btn").addEventListener("click", () => document.getElementById("help-modal").classList.add("open"));
-document.getElementById("help-close").addEventListener("click", () => document.getElementById("help-modal").classList.remove("open"));
-document.getElementById("help-modal").addEventListener("click", e => { if (e.target === e.currentTarget) e.currentTarget.classList.remove("open"); });
+const helpModal = document.getElementById("help-modal");
+document.getElementById("help-btn").addEventListener("click", () => helpModal.classList.add("open"));
+document.getElementById("help-close").addEventListener("click", () => helpModal.classList.remove("open"));
+helpModal.addEventListener("click", e => { if (e.target === e.currentTarget) helpModal.classList.remove("open"); });
+document.addEventListener("keydown", e => { if (e.key === "Escape") helpModal.classList.remove("open"); });
 document.getElementById("search").addEventListener("input", e => { searchVal = e.target.value.toLowerCase(); renderGraph(); clearPanel(); });
 document.getElementById("show-enhancer").addEventListener("change", () => { renderGraph(); clearPanel(); });
 
