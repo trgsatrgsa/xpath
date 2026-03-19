@@ -49,11 +49,17 @@
   .tab .dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 4px; vertical-align: middle; }
 
   #stat-filter-bar {
-    display: flex; gap: 5px; flex-wrap: wrap; align-items: center;
+    display: flex; flex-direction: column; gap: 3px;
     padding: 5px 12px; background: #0f1722; border-bottom: 1px solid #1e3447;
-    flex-shrink: 0; max-height: 72px; overflow-y: auto;
+    flex-shrink: 0; max-height: 90px; overflow-y: auto;
   }
   #stat-filter-bar .filter-label { font-size: 0.7rem; color: #52636d; white-space: nowrap; }
+  .chip-group { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+  .chip-group-label {
+    font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.1em;
+    color: #2a3f52; white-space: nowrap; padding-right: 4px;
+    border-right: 1px solid #2a3f52; margin-right: 2px; min-width: 58px; text-align: right;
+  }
   .stat-chip {
     font-size: 0.7rem; padding: 2px 7px; border-radius: 10px;
     border: 1px solid #2a3f52; color: #8aa8ba; cursor: pointer;
@@ -382,29 +388,66 @@ function connectedComponents(nodeIds, edges) {
 }
 
 /* ── stat chips: built from visible primary nodes, sorted alpha by short name ── */
+/* stat group classification */
+const STAT_GROUPS = {
+  Offensive: new Set([
+    "ATK","ATK %","MATK","MATK %",
+    "Critical Rate","Critical Rate %","Critical Damage",
+    "STR","STR %","INT","INT %","DEX","DEX %","AGI","AGI %","VIT","VIT %",
+    "Physical Pierce","Magic Pierce",
+    "Unsheathe Attack","Long Range Damage","Short Range Damage",
+    "Accuracy","Stability","Strong","Smite","Anticipate","Guard Break",
+  ]),
+  Defensive: new Set([
+    "MaxHP","MaxHP %","DEF","DEF %","MDEF","MDEF %",
+    "Physical Resistance","Magic Resistance","Resistance",
+    "Fire Resistance","Water Resistance","Wind Resistance","Earth Resistance",
+    "Light Resistance","Dark Resistance",
+    "Ailment Resistance","Flee Rate","Guard Recharge","Evasion Rate",
+  ]),
+};
+function statGroup(name) {
+  if (STAT_GROUPS.Offensive.has(name)) return "Offensive";
+  if (STAT_GROUPS.Defensive.has(name)) return "Defensive";
+  return "Utility";
+}
+
 function buildStatChips(nodes) {
-  const stats = new Map(); // full_name -> count
+  const stats = new Map();
   nodes.forEach(n => (n.data.stats || []).forEach(s => stats.set(s.stat, (stats.get(s.stat) || 0) + 1)));
 
-  // sort alphabetically by short name
-  const sorted = [...stats.keys()].sort((a, b) => shortStat(a).localeCompare(shortStat(b)));
+  // group -> sorted stat names
+  const groups = { Offensive: [], Defensive: [], Utility: [] };
+  [...stats.keys()].forEach(name => groups[statGroup(name)].push(name));
+  Object.values(groups).forEach(arr => arr.sort((a, b) => shortStat(a).localeCompare(shortStat(b))));
 
   const bar = document.getElementById("stat-filter-bar");
-  [...bar.querySelectorAll(".stat-chip")].forEach(c => c.remove());
+  [...bar.querySelectorAll(".stat-chip, .chip-group")].forEach(c => c.remove());
 
-  sorted.forEach(fullName => {
-    const chip = document.createElement("span");
-    chip.className = "stat-chip" + (activeStats.has(fullName) ? " active" : "");
-    chip.textContent = shortStat(fullName);
-    chip.title = fullName; // full name on hover
-    chip.dataset.stat = fullName;
-    chip.addEventListener("click", () => {
-      if (activeStats.has(fullName)) activeStats.delete(fullName);
-      else activeStats.add(fullName);
-      // re-render graph so non-matching nodes are fully hidden
-      renderGraph(); clearPanel();
+  Object.entries(groups).forEach(([groupName, names]) => {
+    if (!names.length) return;
+    const wrap = document.createElement("span");
+    wrap.className = "chip-group";
+
+    const label = document.createElement("span");
+    label.className = "chip-group-label";
+    label.textContent = groupName;
+    wrap.appendChild(label);
+
+    names.forEach(fullName => {
+      const chip = document.createElement("span");
+      chip.className = "stat-chip" + (activeStats.has(fullName) ? " active" : "");
+      chip.textContent = shortStat(fullName);
+      chip.title = fullName;
+      chip.addEventListener("click", () => {
+        if (activeStats.has(fullName)) activeStats.delete(fullName);
+        else activeStats.add(fullName);
+        renderGraph(); clearPanel();
+      });
+      wrap.appendChild(chip);
     });
-    bar.appendChild(chip);
+
+    bar.appendChild(wrap);
   });
 }
 
@@ -571,9 +614,11 @@ function renderGraph() {
   cy.ready(() => {
     const firstComp = comps[0] || [];
     if (firstComp.length) {
-      const firstNodes = cy.nodes().filter(n => firstComp.includes(n.id()));
-      cy.fit(firstNodes, 60);
+      // fit to first 4 nodes of the longest chain for a readable entry view
+      const peek = cy.nodes().filter(n => firstComp.slice(0, 4).includes(n.id()));
+      cy.fit(peek.length ? peek : cy.nodes().slice(0, 4), 80);
       if (cy.zoom() > 1.4) cy.zoom(1.4);
+      if (cy.zoom() < 0.7) cy.zoom(0.7);
     } else {
       cy.fit(undefined, 60);
     }
