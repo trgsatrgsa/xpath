@@ -560,10 +560,13 @@ function renderGraph() {
   const visEdges = allEdges.filter(e => primaryIdSet.has(e.source) && (primaryIdSet.has(e.target) || stubIds.has(e.target)));
   const stubNodes = [...stubIds].map(id => nodeById[id]).filter(Boolean);
 
+  const matchedIds = searchVal ? new Set(primary.filter(n => n.data.name.toLowerCase().includes(searchVal)).map(n => n.id)) : new Set();
+
   const elements = [
     ...primary.map(n => ({
       data: { id: n.id, label: buildLabel(n.data), stub: false, enhancer: isEnhancer(n.data.crysta_type),
-              slot_color: slotOf(n.data.crysta_type).color, chain_depth: depths[n.id] || 0, ...n.data }
+              slot_color: slotOf(n.data.crysta_type).color, chain_depth: depths[n.id] || 0, ...n.data,
+              matched: matchedIds.has(n.id) }
     })),
     ...stubNodes.map(n => ({
       data: { id: n.id, label: n.data.name, stub: true, enhancer: isEnhancer(n.data.crysta_type),
@@ -609,6 +612,7 @@ function renderGraph() {
       },
       { selector: "node[?stub]", style: { "opacity": 0.32, "border-style": "dotted", "font-style": "italic", "font-weight": "normal" } },
       { selector: "node:selected", style: { "border-color": "#fff", "border-width": 3, "opacity": 1 } },
+      { selector: "node[?matched]", style: { "border-color": "#fff", "border-width": 3 } },
       { selector: "edge", style: { "width": 2, "line-color": "#2a3f52", "target-arrow-color": "#67b8df", "target-arrow-shape": "triangle", "curve-style": "bezier" } }
     ],
     layout: { name: "dagre", rankDir: "LR", nodeSep: 28, rankSep: 90, animate: false },
@@ -672,6 +676,19 @@ function renderGraph() {
     _panHistory.push({ ...cy.pan(), t: performance.now() });
     if (_panHistory.length > 8) _panHistory.shift();
   });
+
+  // pulse matched nodes
+  if (matchedIds.size > 0) {
+    const pulse = () => {
+      const matched = cy.nodes("[?matched]");
+      if (!matched.length) return;
+      matched.animate({ style: { "border-width": 4 }, duration: 900, easing: "ease-in-out-sine",
+        complete: () => matched.animate({ style: { "border-width": 2 }, duration: 900, easing: "ease-in-out-sine",
+          complete: pulse })
+      });
+    };
+    cy.ready(() => setTimeout(pulse, 300));
+  }
 
   buildStatPicker(primaryForChips);
 }
@@ -798,7 +815,14 @@ function moveTooltip(e) {
 function hideTooltip() { _tt.style.display = "none"; }
 
 /* ── search ── */
-document.getElementById("search").addEventListener("input", e => { searchVal = e.target.value.toLowerCase(); renderGraph(); closeDrawer(); });
+const _searchEl = document.getElementById("search");
+_searchEl.addEventListener("input", e => { searchVal = e.target.value.toLowerCase(); renderGraph(); closeDrawer(); });
+
+document.addEventListener("keydown", e => {
+  if (document.activeElement === _searchEl) return;
+  if (e.metaKey || e.ctrlKey || e.altKey) return;
+  if (e.key.length === 1) { _searchEl.focus(); }
+});
 
 /* ── wheel + touch listeners (registered ONCE, reference outer cy / state) ── */
 (function setupDomListeners() {
