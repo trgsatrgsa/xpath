@@ -175,6 +175,24 @@
     background: none; border: none; color: #52636d; font-size: 1.4rem; cursor: pointer; line-height: 1;
   }
   #help-box .footer-note { margin-top: 16px; font-size: 0.72rem; color: #52636d; border-top: 1px solid #1e3447; padding-top: 10px; }
+
+  /* hover tooltip */
+  #cy-tooltip {
+    position: fixed; pointer-events: none; z-index: 100;
+    background: #17212d; border: 1px solid #2a3f52; border-radius: 8px;
+    padding: 10px 12px; min-width: 160px; max-width: 240px;
+    font-size: 0.78rem; line-height: 1.5; color: #d9ebf8;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.5); display: none;
+  }
+  #cy-tooltip h4 { font-size: 0.82rem; color: #67b8df; margin-bottom: 4px; }
+  #cy-tooltip .tt-type { font-size: 0.68rem; font-weight: 700; padding: 1px 6px; border-radius: 3px; display: inline-block; margin-bottom: 6px; }
+  #cy-tooltip .tt-stat { display: grid; grid-template-columns: 1fr auto; gap: 8px; border-bottom: 1px solid #1e3447; padding: 2px 0; }
+  #cy-tooltip .tt-stat .tv { font-weight: 700; white-space: nowrap; }
+  #cy-tooltip .tt-stat .tv.neg { color: #f48a8a; }
+  #cy-tooltip .tt-stat .tv.pos { color: #7ee8a2; }
+  #cy-tooltip .tt-sep { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.08em; color: #52636d; margin: 5px 0 3px; }
+  #cy-tooltip .tt-drop { color: #8aa8ba; }
+  #cy-tooltip .tt-map { color: #67b8df; font-size: 0.74rem; }
 </style>
 </head>
 <body>
@@ -183,12 +201,12 @@
   <h1>⬡ XPath</h1>
   <input id="search" type="search" placeholder="Search crystal..." autocomplete="off">
   <button class="hdr-btn" id="filter-btn" title="Stats Filter">⊞<span class="badge" id="filter-badge" style="display:none"></span></button>
-  <a href="desktop.html" class="hdr-btn" title="Desktop version" style="text-decoration:none;font-size:0.7rem;font-weight:600">PC</a>
   <button class="hdr-btn" id="help-btn" title="Help">?</button>
 </div>
 
 <div id="tabs"></div>
 
+<div id="cy-tooltip"></div>
 <div id="stat-picker-backdrop"></div>
 <div id="stat-picker">
   <div id="stat-picker-header">
@@ -321,6 +339,15 @@ let initialViewport = null;
 let _clampBB = null, _panClamping = false;
 let _scrollVY = 0, _scrollRaf = null;
 let _panHistory = [], _momentumRaf = null, _touching = false, _panning = false;
+let _lastPinchDist = null;
+function _tickScroll() {
+  _scrollRaf = requestAnimationFrame(() => {
+    if (Math.abs(_scrollVY) < 0.5) { _scrollRaf = null; return; }
+    if (cy) cy.panBy({ x: 0, y: -_scrollVY });
+    _scrollVY *= 0.82;
+    _tickScroll();
+  });
+}
 const _touchOrigin = { x: 0, y: 0 };
 
 async function loadGraph() {
@@ -587,7 +614,7 @@ function renderGraph() {
     layout: { name: "dagre", rankDir: "LR", nodeSep: 28, rankSep: 90, animate: false },
     autoungrabify: true,
     userPanningEnabled: true,
-    userZoomingEnabled: true,
+    userZoomingEnabled: false,
     pixelRatio: Math.min(window.devicePixelRatio || 1, 1.5),
   });
 
@@ -616,10 +643,14 @@ function renderGraph() {
     }
     initialViewport = { pan: { ...cy.pan() }, zoom: cy.zoom() };
     _clampBB = cy.nodes(":visible").boundingBox();
+
   });
 
-  cy.on("tap", "node", evt => showPanel(evt.target.data()));
-  cy.on("tap", evt => { if (evt.target === cy) closeDrawer(); });
+  cy.on("tap",      "node", evt => showPanel(evt.target.data()));
+  cy.on("tap",      evt => { if (evt.target === cy) closeDrawer(); });
+  cy.on("mouseover","node", evt => showTooltip(evt.target.data(), evt.originalEvent));
+  cy.on("mousemove","node", evt => moveTooltip(evt.originalEvent));
+  cy.on("mouseout", "node", () => hideTooltip());
 
   // pan clamp — _clampBB set in cy.ready above (outer scope)
   cy.on("pan zoom", () => {
@@ -698,7 +729,8 @@ document.getElementById("drawer-handle").addEventListener("click", closeDrawer);
 function applyZoom(z) {
   if (!cy) return;
   const clamped = Math.min(Math.max(z, 0.3), 4);
-  cy.animate({ zoom: { level: clamped, renderedPosition: { x: cy.width() / 2, y: cy.height() / 2 } }, duration: 250, easing: "ease-in-out-cubic" });
+  cy.stop(true);
+  cy.animate({ zoom: { level: clamped, renderedPosition: { x: cy.width() / 2, y: cy.height() / 2 } }, duration: 180, easing: "ease-out-cubic" });
 }
 document.getElementById("zoom-in-btn").addEventListener("click",  () => cy && applyZoom(cy.zoom() * 1.5));
 document.getElementById("zoom-out-btn").addEventListener("click", () => cy && applyZoom(cy.zoom() / 1.5));
@@ -728,6 +760,43 @@ document.getElementById("help-btn").addEventListener("click", () => helpModal.cl
 document.getElementById("help-close").addEventListener("click", () => helpModal.classList.remove("open"));
 helpModal.addEventListener("click", e => { if (e.target === e.currentTarget) helpModal.classList.remove("open"); });
 
+/* ── hover tooltip ── */
+const _tt = document.getElementById("cy-tooltip");
+function showTooltip(data, e) {
+  const color = slotOf(data.crysta_type).color;
+  let html = `<h4>${data.name}</h4>`;
+  html += `<span class="tt-type" style="background:${color}22;color:${color};border:1px solid ${color}44">${data.crysta_type || "?"}</span>`;
+  if (data.stats && data.stats.length) {
+    html += `<div class="tt-sep">Stat / Effect</div>`;
+    data.stats.forEach(s => {
+      const v = parseFloat(s.amount);
+      const cls = v > 0 ? "pos" : v < 0 ? "neg" : "";
+      html += `<div class="tt-stat"><span>${s.stat}</span><span class="tv ${cls}">${v > 0 ? "+" : ""}${s.amount}</span></div>`;
+    });
+  }
+  if (data.drop_sources && data.drop_sources.length) {
+    html += `<div class="tt-sep">Obtained From</div>`;
+    data.drop_sources.slice(0, 3).forEach(d => {
+      html += `<div class="tt-drop">${d.monster || "?"}${d.level ? ` (Lv ${d.level})` : ""}</div>`;
+      html += `<div class="tt-map">${d.map || "?"}</div>`;
+    });
+    if (data.drop_sources.length > 3)
+      html += `<div style="color:#52636d;font-size:0.7rem">+${data.drop_sources.length - 3} more…</div>`;
+  }
+  _tt.innerHTML = html;
+  _tt.style.display = "block";
+  moveTooltip(e);
+}
+function moveTooltip(e) {
+  const pad = 14, tw = _tt.offsetWidth, th = _tt.offsetHeight;
+  let x = e.clientX + pad, y = e.clientY + pad;
+  if (x + tw > window.innerWidth  - 8) x = e.clientX - tw - pad;
+  if (y + th > window.innerHeight - 8) y = e.clientY - th - pad;
+  _tt.style.left = x + "px";
+  _tt.style.top  = y + "px";
+}
+function hideTooltip() { _tt.style.display = "none"; }
+
 /* ── search ── */
 document.getElementById("search").addEventListener("input", e => { searchVal = e.target.value.toLowerCase(); renderGraph(); closeDrawer(); });
 
@@ -735,24 +804,16 @@ document.getElementById("search").addEventListener("input", e => { searchVal = e
 (function setupDomListeners() {
   const cyEl = document.getElementById("cy");
 
-  // smooth scroll → vertical pan
-  function tickScroll() {
-    _scrollRaf = requestAnimationFrame(() => {
-      if (Math.abs(_scrollVY) < 0.5) { _scrollRaf = null; return; }
-      if (cy) cy.panBy({ x: 0, y: -_scrollVY });
-      _scrollVY *= 0.82;
-      tickScroll();
-    });
-  }
+  // wheel → vertical pan (Cytoscape wheel-zoom disabled via userZoomingEnabled:false)
   cyEl.addEventListener("wheel", e => {
     e.preventDefault();
-    e.stopImmediatePropagation();
     _scrollVY += e.deltaY * 0.3;
-    if (!_scrollRaf) tickScroll();
+    if (!_scrollRaf) _tickScroll();
   }, { passive: false });
 
   // touch momentum + edge-hide on pan
   cyEl.addEventListener("touchstart", e => {
+    _lastPinchDist = null;
     _touching = true; _panning = false;
     _panHistory = [];
     if (e.touches[0]) { _touchOrigin.x = e.touches[0].clientX; _touchOrigin.y = e.touches[0].clientY; }
@@ -761,6 +822,22 @@ document.getElementById("search").addEventListener("input", e => { searchVal = e
   }, { passive: true });
 
   cyEl.addEventListener("touchmove", e => {
+    // pinch zoom — two fingers
+    if (e.touches.length === 2 && cy) {
+      const t0 = e.touches[0], t1 = e.touches[1];
+      const dist = Math.hypot(t1.clientX - t0.clientX, t1.clientY - t0.clientY);
+      if (_lastPinchDist !== null) {
+        const scale = dist / _lastPinchDist;
+        const mx = (t0.clientX + t1.clientX) / 2;
+        const my = (t0.clientY + t1.clientY) / 2;
+        const newZoom = Math.min(Math.max(cy.zoom() * scale, cy.minZoom()), cy.maxZoom());
+        cy.zoom({ level: newZoom, renderedPosition: { x: mx, y: my } });
+      }
+      _lastPinchDist = dist;
+      return;
+    }
+    _lastPinchDist = null;
+    // single-finger pan
     if (!_panning && e.touches[0]) {
       const dx = e.touches[0].clientX - _touchOrigin.x;
       const dy = e.touches[0].clientY - _touchOrigin.y;
@@ -772,6 +849,7 @@ document.getElementById("search").addEventListener("input", e => { searchVal = e
   }, { passive: true });
 
   cyEl.addEventListener("touchend", e => {
+    if (e.touches.length < 2) _lastPinchDist = null;
     _touching = false;
     if (!_panning) return;
     if (!cy) return;
