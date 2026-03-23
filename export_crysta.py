@@ -73,17 +73,21 @@ def fetch_upgrade_edges(conn, item_ids):
 
 
 def load_links_fix(path: Path):
-    """Load manual edge overrides. Returns list of (source_id, target_id, note)."""
+    """Load manual overrides. Returns (edges, type_overrides)."""
     if not path.exists():
-        return []
+        return [], {}
     entries = json.loads(path.read_text())
-    result = []
+    edges, type_overrides = [], {}
     for e in entries:
+        if e.get("_todo") or e.get("_skip"):
+            pass  # still check for type_override even on todos
         sid = e.get("source_id")
         tid = e.get("target_id")
-        if sid and tid and not e.get("_todo") and not e.get("_skip"):  # skip placeholders/todos
-            result.append((int(sid), int(tid), e.get("note", "")))
-    return result
+        if sid and tid and not e.get("_todo") and not e.get("_skip"):
+            edges.append((int(sid), int(tid), e.get("note", "")))
+        if tid and e.get("type_override"):
+            type_overrides[int(tid)] = e["type_override"]
+    return edges, type_overrides
 
 
 def check_orphan_enhancers(conn):
@@ -118,7 +122,7 @@ def check_orphan_enhancers(conn):
     print("  ...")
 
 
-def build_graph(conn, type_filter=None, fix_edges=None):
+def build_graph(conn, type_filter=None, fix_edges=None, type_overrides=None):
     crystas = fetch_crystas(conn, type_filter)
     if not crystas:
         print("No crystas found. Run parse_items.py first.")
@@ -140,7 +144,9 @@ def build_graph(conn, type_filter=None, fix_edges=None):
 
     id_set = set(item_ids)
     nodes = []
+    type_overrides = type_overrides or {}
     for item_id, name, item_type, item_url, image_url, sell_amount, sell_unit, process_amount, process_type in crystas:
+        item_type = type_overrides.get(item_id, item_type)
         nodes.append({
             "id": str(item_id),
             "type": "crystaNode",
@@ -207,8 +213,8 @@ def main():
         conn.close()
         return
 
-    fix_edges = load_links_fix(Path(args.links_fix))
-    graph = build_graph(conn, args.type, fix_edges)
+    fix_edges, type_overrides = load_links_fix(Path(args.links_fix))
+    graph = build_graph(conn, args.type, fix_edges, type_overrides)
     conn.close()
 
     out = Path(args.out)
