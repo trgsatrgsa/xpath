@@ -29069,6 +29069,80 @@
           }
         ]
       }
+    },
+    {
+      "id": "9001",
+      "type": "crystaNode",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "data": {
+        "name": "Zega VIII",
+        "crysta_type": "Enhancer Crysta (Red)",
+        "item_url": null,
+        "image_url": null,
+        "sell_amount": null,
+        "sell_unit": null,
+        "process_amount": null,
+        "process_type": null,
+        "stats": [
+          {
+            "stat": "MaxHP",
+            "amount": "1100"
+          },
+          {
+            "stat": "Magic Resistance %",
+            "amount": "9"
+          },
+          {
+            "stat": "Water resistance %",
+            "amount": "8"
+          },
+          {
+            "stat": "Attack MP Recovery",
+            "amount": "10"
+          }
+        ],
+        "drop_sources": []
+      }
+    },
+    {
+      "id": "9002",
+      "type": "crystaNode",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "data": {
+        "name": "Zega IX",
+        "crysta_type": "Enhancer Crysta (Red)",
+        "item_url": null,
+        "image_url": null,
+        "sell_amount": null,
+        "sell_unit": null,
+        "process_amount": null,
+        "process_type": null,
+        "stats": [
+          {
+            "stat": "MaxHP",
+            "amount": "1200"
+          },
+          {
+            "stat": "Magic Resistance %",
+            "amount": "10"
+          },
+          {
+            "stat": "Water resistance %",
+            "amount": "9"
+          },
+          {
+            "stat": "Attack MP Recovery",
+            "amount": "11"
+          }
+        ],
+        "drop_sources": []
+      }
     }
   ],
   "edges": [
@@ -30567,6 +30641,27 @@
       "id": "e3704-8207",
       "source": "3704",
       "target": "8207",
+      "label": "Upgrade Into",
+      "animated": true
+    },
+    {
+      "id": "e6779-9001",
+      "source": "6779",
+      "target": "9001",
+      "label": "Upgrade Into",
+      "animated": true
+    },
+    {
+      "id": "e9001-9002",
+      "source": "9001",
+      "target": "9002",
+      "label": "Upgrade Into",
+      "animated": true
+    },
+    {
+      "id": "e9002-8277",
+      "source": "9002",
+      "target": "8277",
       "label": "Upgrade Into",
       "animated": true
     }

@@ -73,21 +73,25 @@ def fetch_upgrade_edges(conn, item_ids):
 
 
 def load_links_fix(path: Path):
-    """Load manual overrides. Returns (edges, type_overrides)."""
+    """Load manual overrides. Returns (edges, type_overrides, stats_overrides, new_nodes)."""
     if not path.exists():
-        return [], {}
+        return [], {}, {}, []
     entries = json.loads(path.read_text())
-    edges, type_overrides = [], {}
+    edges, type_overrides, stats_overrides, new_nodes = [], {}, {}, []
     for e in entries:
-        if e.get("_todo") or e.get("_skip"):
-            pass  # still check for type_override even on todos
-        sid = e.get("source_id")
-        tid = e.get("target_id")
-        if sid and tid and not e.get("_todo") and not e.get("_skip"):
+        skip = e.get("_todo") or e.get("_skip")
+        sid  = e.get("source_id")
+        tid  = e.get("target_id")
+        if e.get("new_node"):
+            new_nodes.append(e)
+            continue
+        if not skip and sid and tid:
             edges.append((int(sid), int(tid), e.get("note", "")))
         if tid and e.get("type_override"):
             type_overrides[int(tid)] = e["type_override"]
-    return edges, type_overrides
+        if tid and e.get("stats"):
+            stats_overrides[int(tid)] = e["stats"]
+    return edges, type_overrides, stats_overrides, new_nodes
 
 
 def check_orphan_enhancers(conn):
@@ -122,7 +126,7 @@ def check_orphan_enhancers(conn):
     print("  ...")
 
 
-def build_graph(conn, type_filter=None, fix_edges=None, type_overrides=None):
+def build_graph(conn, type_filter=None, fix_edges=None, type_overrides=None, stats_overrides=None, new_nodes=None):
     crystas = fetch_crystas(conn, type_filter)
     if not crystas:
         print("No crystas found. Run parse_items.py first.")
@@ -142,11 +146,35 @@ def build_graph(conn, type_filter=None, fix_edges=None, type_overrides=None):
     if injected:
         print(f"  Injected {injected} edge(s) from links_fix.json")
 
+    type_overrides  = type_overrides  or {}
+    stats_overrides = stats_overrides or {}
+    new_nodes       = new_nodes       or []
+
+    # inject new_node entries from links_fix into the working sets (skip if already in DB)
+    existing_ids = set(item_ids)
+    for n in new_nodes:
+        nid = int(n["id"])
+        if nid in existing_ids:
+            # node already in DB — still apply stats/type overrides from new_node
+            if n.get("stats"):       stats_overrides[nid] = n["stats"]
+            if n.get("crysta_type"): type_overrides[nid]  = n["crysta_type"]
+            continue
+        item_ids.append(nid)
+        crystas.append((nid, n["name"], n.get("crysta_type",""), None, None, None, None, None, None))
+        if n.get("stats"):
+            stats_overrides[nid] = n["stats"]
+        if n.get("drop_sources"):
+            drops_map[nid] = n["drop_sources"]
+        if n.get("crysta_type"):
+            pass  # handled via crystas tuple above
+    if new_nodes:
+        print(f"  Injected {len(new_nodes)} new node(s) from links_fix.json")
+
     id_set = set(item_ids)
     nodes = []
-    type_overrides = type_overrides or {}
     for item_id, name, item_type, item_url, image_url, sell_amount, sell_unit, process_amount, process_type in crystas:
         item_type = type_overrides.get(item_id, item_type)
+        node_stats = stats_overrides[item_id] if item_id in stats_overrides else stats_map.get(item_id, [])
         nodes.append({
             "id": str(item_id),
             "type": "crystaNode",
@@ -156,7 +184,7 @@ def build_graph(conn, type_filter=None, fix_edges=None, type_overrides=None):
                 "item_url": item_url, "image_url": image_url,
                 "sell_amount": sell_amount, "sell_unit": sell_unit,
                 "process_amount": process_amount, "process_type": process_type,
-                "stats": stats_map.get(item_id, []),
+                "stats": node_stats,
                 "drop_sources": drops_map.get(item_id, []),
             },
         })
@@ -213,8 +241,8 @@ def main():
         conn.close()
         return
 
-    fix_edges, type_overrides = load_links_fix(Path(args.links_fix))
-    graph = build_graph(conn, args.type, fix_edges, type_overrides)
+    fix_edges, type_overrides, stats_overrides, new_nodes = load_links_fix(Path(args.links_fix))
+    graph = build_graph(conn, args.type, fix_edges, type_overrides, stats_overrides, new_nodes)
     conn.close()
 
     out = Path(args.out)

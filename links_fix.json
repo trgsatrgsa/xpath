@@ -63,12 +63,51 @@
     "note": "confirmed by user: base Weapon Crysta, Coryn Club misclassified as Enhancer Crysta (Red)"
   },
   {
-    "_todo": true,
-    "source_id": null,
-    "source_name": "Zega IX - not in DB",
+    "new_node": true,
+    "id": 9001,
+    "name": "Zega VIII",
+    "crysta_type": "Enhancer Crysta (Red)",
+    "stats": [
+      { "stat": "MaxHP",              "amount": "1100" },
+      { "stat": "Magic Resistance %", "amount": "9"    },
+      { "stat": "Water resistance %", "amount": "8"    },
+      { "stat": "Attack MP Recovery", "amount": "10"   }
+    ],
+    "note": "interpolated from chain pattern (each tier +100 HP, +1 per stat)"
+  },
+  {
+    "new_node": true,
+    "id": 9002,
+    "name": "Zega IX",
+    "crysta_type": "Enhancer Crysta (Red)",
+    "stats": [
+      { "stat": "MaxHP",              "amount": "1200" },
+      { "stat": "Magic Resistance %", "amount": "10"   },
+      { "stat": "Water resistance %", "amount": "9"    },
+      { "stat": "Attack MP Recovery", "amount": "11"   }
+    ],
+    "note": "interpolated from chain pattern (each tier +100 HP, +1 per stat)"
+  },
+  {
+    "source_id": 6779,
+    "source_name": "Zega VII",
+    "target_id": 9001,
+    "target_name": "Zega VIII",
+    "note": "manually added"
+  },
+  {
+    "source_id": 9001,
+    "source_name": "Zega VIII",
+    "target_id": 9002,
+    "target_name": "Zega IX",
+    "note": "manually added"
+  },
+  {
+    "source_id": 9002,
+    "source_name": "Zega IX",
     "target_id": 8277,
     "target_name": "Zega X",
-    "note": "TODO: Zega VIII and IX missing from scrape. Chain is ...VII→VIII→IX→X. Add them to DB first."
+    "note": "confirmed by user"
   },
   {
     "_todo": true,
