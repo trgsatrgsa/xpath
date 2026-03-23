@@ -21,35 +21,32 @@
     "note": "confirmed: naming pattern + DB (chain: Hero Potum→II→III→IV)"
   },
   {
-    "source_id": 6593,
-    "source_name": "Melancia",
+    "source_id": 5487,
+    "source_name": "Clawed Iron Witch",
     "target_id": 7512,
     "target_name": "Raging Dragon Bovinari",
-    "note": "confirmed: toram online web source"
+    "note": "confirmed by user: Raging Dragon Bovinari upgrades from Clawed Iron Witch"
   },
   {
-    "source_id": 5768,
-    "source_name": "Devil Dango",
+    "source_id": 4296,
+    "source_name": "Armasite",
     "target_id": 7366,
     "target_name": "Diark",
-    "note": "confirmed: Devil Dango (Weapon Crysta) upgrades into Diark or Fubbit"
-  },
-
-  {
-    "_todo": true,
-    "source_id": null,
-    "source_name": "??? - check in game",
-    "target_id": 8277,
-    "target_name": "Zega X",
-    "note": "TODO: Zega VII is last known in DB (id 6779), VIII and IX may be missing from scrape"
+    "note": "confirmed by user: Diark upgrades from Armasite, not Devil Dango"
   },
   {
-    "_todo": true,
-    "source_id": null,
-    "source_name": "??? - check in game",
-    "target_id": 8173,
-    "target_name": "Shadow Devil Cavalier",
-    "note": "TODO: no source found online or raffydb"
+    "source_id": 3477,
+    "source_name": "Altoblepas",
+    "target_id": 7511,
+    "target_name": "Jiva",
+    "note": "confirmed by user: Jiva is additional enhancer from Altoblepas"
+  },
+  {
+    "source_id": 5330,
+    "source_name": "Ox King",
+    "target_id": 8056,
+    "target_name": "Pillorocas",
+    "note": "confirmed by user: Pillorocas upgrades from Ox King"
   },
   {
     "source_id": 3704,
@@ -59,24 +56,27 @@
     "note": "confirmed: raffydb.com/crysta/armorenhancercrysta/637/merzehal/"
   },
   {
-    "_skip": true,
     "source_id": null,
     "target_id": 8229,
     "target_name": "Stormun",
-    "note": "RaffyDB classifies as base Weapon Crysta (not enhancer). Coryn Club says Enhancer Crysta (Red). Classification mismatch — no base crystal to link. raffydb.com/crysta/weaponcrysta/629/stormun/"
+    "type_override": "Weapon Crysta",
+    "note": "confirmed by user: base Weapon Crysta, Coryn Club misclassified as Enhancer Crysta (Red)"
   },
   {
-    "_skip": true,
+    "_todo": true,
     "source_id": null,
-    "target_id": 7511,
-    "target_name": "Jiva",
-    "note": "Standalone enhancer — no upgrade path. Obtained directly from drop. raffydb.com/crysta/additionalenhancercrysta/493/jiva/"
+    "source_name": "Zega IX - not in DB",
+    "target_id": 8277,
+    "target_name": "Zega X",
+    "note": "TODO: Zega VIII and IX missing from scrape. Chain is ...VII→VIII→IX→X. Add them to DB first."
   },
   {
-    "_skip": true,
+    "_todo": true,
     "source_id": null,
-    "target_id": 8056,
-    "target_name": "Pillorocas",
-    "note": "Standalone enhancer — no upgrade path. Obtained directly from drop. raffydb.com/crysta/additionalenhancercrysta/486/pillorocas/"
+    "source_name": "??? - check in game",
+    "target_id": 8173,
+    "target_name": "Shadow Devil Cavalier",
+    "type_override": "Additional Crysta",
+    "note": "confirmed by user: base Additional Crysta, not enhancer. Source crystal still unknown."
   }
 ]

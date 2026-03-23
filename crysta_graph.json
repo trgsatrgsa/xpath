@@ -27869,7 +27869,7 @@
       },
       "data": {
         "name": "Shadow Devil Cavalier",
-        "crysta_type": "Enhancer Crysta (Yellow)",
+        "crysta_type": "Additional Crysta",
         "item_url": "item.php?id=8173",
         "image_url": "images/PH-Light.png?v=1773691177",
         "sell_amount": 147.0,
@@ -28382,7 +28382,7 @@
       },
       "data": {
         "name": "Stormun",
-        "crysta_type": "Enhancer Crysta (Red)",
+        "crysta_type": "Weapon Crysta",
         "item_url": "item.php?id=8229",
         "image_url": "images/PH-Light.png?v=1773691177",
         "sell_amount": 1.0,
@@ -30536,16 +30536,30 @@
       "animated": true
     },
     {
-      "id": "e6593-7512",
-      "source": "6593",
+      "id": "e5487-7512",
+      "source": "5487",
       "target": "7512",
       "label": "Upgrade Into",
       "animated": true
     },
     {
-      "id": "e5768-7366",
-      "source": "5768",
+      "id": "e4296-7366",
+      "source": "4296",
       "target": "7366",
+      "label": "Upgrade Into",
+      "animated": true
+    },
+    {
+      "id": "e3477-7511",
+      "source": "3477",
+      "target": "7511",
+      "label": "Upgrade Into",
+      "animated": true
+    },
+    {
+      "id": "e5330-8056",
+      "source": "5330",
+      "target": "8056",
       "label": "Upgrade Into",
       "animated": true
     },
