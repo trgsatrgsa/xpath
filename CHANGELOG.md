@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.2.5 — 2026-03-23
+**Data fixes**
+- Diark ← Armasite (was incorrectly linked from Devil Dango)
+- Raging Dragon Bovinari ← Clawed Iron Witch (was Melancia)
+- Jiva ← Altoblepas (was marked standalone, now correctly linked)
+- Pillorocas ← Ox King (was marked standalone, now correctly linked)
+- Stormun: reclassified as Weapon Crysta (Coryn Club misclassified as Enhancer)
+- Shadow Devil Cavalier: reclassified as Additional Crysta (not Enhancer)
+
 ## v0.2.4 — 2026-03-21
 - Mobile is now the default page (`index.html`); desktop removed
 - Hover tooltip on mouse (name, stats, drop source)
