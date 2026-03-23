@@ -50,6 +50,50 @@ python3 export_crysta.py
 
 ---
 
+---
+
+## Add a crystal not in Coryn Club / missing from DB
+
+No Python or DB needed. Add a `new_node` entry directly in `links_fix.json`.
+Use IDs starting from **9001** (manual range, won't conflict with scrape).
+
+```json
+{
+  "new_node": true,
+  "id": 9003,
+  "name": "Zega XI",
+  "crysta_type": "Enhancer Crysta (Red)",
+  "stats": [
+    { "stat": "MaxHP",               "amount": "1400" },
+    { "stat": "Magic Resistance %",  "amount": "12"   },
+    { "stat": "Water resistance %",  "amount": "11"   },
+    { "stat": "Attack MP Recovery",  "amount": "13"   }
+  ],
+  "note": "manually added"
+}
+```
+
+Then add its upgrade edge as normal, and regenerate.
+
+## Override stats of an existing crystal
+
+Add `stats` to any edge entry — it replaces the DB stats for that `target_id`:
+
+```json
+{
+  "source_id": 6779,
+  "source_name": "Zega VII",
+  "target_id": 9001,
+  "target_name": "Zega VIII",
+  "stats": [
+    { "stat": "MaxHP", "amount": "1100" }
+  ],
+  "note": "corrected stats"
+}
+```
+
+---
+
 ## Valid `crysta_type` values
 - `Weapon Crysta` / `Enhancer Crysta (Red)`
 - `Armor Crysta` / `Enhancer Crysta (Green)`
