@@ -193,18 +193,52 @@
   #cy-tooltip .tt-sep { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.08em; color: #52636d; margin: 5px 0 3px; }
   #cy-tooltip .tt-drop { color: #8aa8ba; }
   #cy-tooltip .tt-map { color: #67b8df; font-size: 0.74rem; }
+
+  /* ── quick filter chips ── */
+  #quick-chips {
+    display: flex; align-items: center; gap: 6px;
+    padding: 6px 12px; background: #17212d; border-bottom: 1px solid #2a3f52;
+    overflow-x: auto; flex-shrink: 0; scrollbar-width: none;
+  }
+  #quick-chips::-webkit-scrollbar { display: none; }
+  .qchip {
+    flex-shrink: 0; padding: 4px 10px; border-radius: 20px;
+    border: 1px solid #2a3f52; background: none; color: #52636d;
+    font-size: 0.76rem; cursor: pointer; white-space: nowrap;
+    transition: all 0.12s; font-family: sans-serif;
+  }
+  .qchip:active, .qchip.active { border-color: #67b8df; color: #67b8df; background: rgba(103,184,223,0.1); }
+  .qchip-more { color: #2a3f52; letter-spacing: 0.08em; position: relative; }
+  .qchip-more.active { border-color: #67b8df; color: #67b8df; }
+  .qchip-cnt {
+    position: absolute; top: -5px; right: -5px;
+    background: #67b8df; color: #0f1722; font-size: 0.58rem; font-weight: 700;
+    min-width: 15px; height: 15px; border-radius: 8px; padding: 0 3px;
+    display: flex; align-items: center; justify-content: center; line-height: 1;
+  }
+  @keyframes hint-pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(103,184,223,0.5); border-color: #67b8df; color: #67b8df; }
+    50%       { box-shadow: 0 0 0 6px rgba(103,184,223,0); border-color: #67b8df; color: #67b8df; }
+  }
+  .hint-pulse { animation: hint-pulse 1.1s ease-in-out 4; }
+  #filter-hint-tip {
+    position: absolute; bottom: calc(100% + 6px); right: 0;
+    background: #0c6f92; color: #fff; font-size: 0.72rem;
+    padding: 4px 9px; border-radius: 6px; white-space: nowrap;
+    pointer-events: none; z-index: 20;
+  }
 </style>
 </head>
 <body>
 
 <div id="header">
   <h1>⬡ XPath</h1>
-  <input id="search" type="search" placeholder="Search crystal..." autocomplete="off">
-  <button class="hdr-btn" id="filter-btn" title="Stats Filter">⊞<span class="badge" id="filter-badge" style="display:none"></span></button>
+  <input id="search" type="search" placeholder="Search crystal or stat..." autocomplete="off">
   <button class="hdr-btn" id="help-btn" title="Help">?</button>
 </div>
 
 <div id="tabs"></div>
+<div id="quick-chips"></div>
 
 <div id="cy-tooltip"></div>
 <div id="stat-picker-backdrop"></div>
@@ -294,6 +328,14 @@ const TYPE_TO_SLOT = {};
 SLOTS.forEach(s => { if (s.base) TYPE_TO_SLOT[s.base] = s; if (s.enhancer) TYPE_TO_SLOT[s.enhancer] = s; });
 function slotOf(t) { return TYPE_TO_SLOT[t] || SLOTS[0]; }
 function isEnhancer(t) { return t && t.startsWith("Enhancer"); }
+const QUICK_STATS = ["ATK %", "MATK %", "Critical Rate", "Critical Damage %", "INT %", "DEX %", "Natural MP Recovery", "MaxMP"];
+
+function matchesSearch(n, val) {
+  if (!val) return false;
+  if (n.data.name.toLowerCase().includes(val)) return true;
+  return (n.data.stats || []).some(s =>
+    s.stat.toLowerCase().includes(val) || shortStat(s.stat).toLowerCase().includes(val));
+}
 
 const STAT_SHORT = {
   "Critical Rate":"CR","Critical Rate %":"CR%","MaxHP":"HP","MaxHP %":"HP%","MaxMP":"MP","MaxMP %":"MP%",
@@ -305,6 +347,7 @@ const STAT_SHORT = {
   "Short Range Damage":"SRD","Strong":"Strong","Dex":"DEX","Str":"STR","Int":"INT","Vit":"VIT",
   "Agi":"AGI","AGI":"AGI","AGI %":"AGI%","STR %":"STR%","INT %":"INT%","VIT %":"VIT%",
   "DEX %":"DEX%","ATK %":"ATK%","MATK %":"MATK%","DEF %":"DEF%","MDEF %":"MDEF%",
+  "Critical Damage":"CD","Critical Damage %":"CD%",
 };
 function shortStat(stat) { return STAT_SHORT[stat] || stat.replace(" %", "%"); }
 
@@ -361,6 +404,7 @@ async function loadGraph() {
   allNodes.forEach(n => nodeById[n.id] = n);
   buildLegend(); buildTabs();
   renderGraph();
+  setTimeout(showFilterHint, 900);
 }
 
 function buildLegend() {
@@ -479,10 +523,16 @@ function buildStatPicker(nodes) {
 function updatePickerTitle() {
   const n = activeStats.size;
   document.getElementById("stat-picker-title").textContent = n ? `${n} stat${n > 1 ? "s" : ""} selected` : "Filter by Stat";
-  const badge = document.getElementById("filter-badge");
-  badge.textContent = n || "";
-  badge.style.display = n ? "flex" : "none";
-  document.getElementById("filter-btn").classList.toggle("active", n > 0);
+  const moreBtn = document.getElementById("qchip-more-btn");
+  if (moreBtn) {
+    moreBtn.classList.toggle("active", n > 0);
+    const cnt = document.getElementById("qchip-cnt");
+    if (cnt) { cnt.textContent = n; cnt.style.display = n > 0 ? "flex" : "none"; }
+  }
+  // sync quick chip active states
+  document.querySelectorAll("#quick-chips .qchip:not(.qchip-more)").forEach(chip => {
+    chip.classList.toggle("active", activeStats.has(chip.title));
+  });
 }
 
 function buildLabel(data) {
@@ -521,7 +571,7 @@ function renderGraph() {
         adj[e.source].push(e.target); adj[e.target].push(e.source);
       }
     });
-    const matched = new Set(primary.filter(n => n.data.name.toLowerCase().includes(searchVal)).map(n => n.id));
+    const matched = new Set(primary.filter(n => matchesSearch(n, searchVal)).map(n => n.id));
     const keep = new Set();
     matched.forEach(startId => {
       if (keep.has(startId)) return;
@@ -560,7 +610,7 @@ function renderGraph() {
   const visEdges = allEdges.filter(e => primaryIdSet.has(e.source) && (primaryIdSet.has(e.target) || stubIds.has(e.target)));
   const stubNodes = [...stubIds].map(id => nodeById[id]).filter(Boolean);
 
-  const matchedIds = searchVal ? new Set(primary.filter(n => n.data.name.toLowerCase().includes(searchVal)).map(n => n.id)) : new Set();
+  const matchedIds = searchVal ? new Set(primary.filter(n => matchesSearch(n, searchVal)).map(n => n.id)) : new Set();
 
   const elements = [
     ...primary.map(n => ({
@@ -691,6 +741,56 @@ function renderGraph() {
   }
 
   buildStatPicker(primaryForChips);
+  buildQuickChips();
+}
+
+/* ── quick chips ── */
+function buildQuickChips() {
+  const row = document.getElementById("quick-chips");
+  row.innerHTML = "";
+
+  QUICK_STATS.forEach(stat => {
+    const chip = document.createElement("button");
+    chip.className = "qchip" + (activeStats.has(stat) ? " active" : "");
+    chip.textContent = shortStat(stat);
+    chip.title = stat;
+    chip.addEventListener("click", () => {
+      const alreadyActive = activeStats.has(stat) && activeStats.size === 1;
+      activeStats.clear();
+      if (!alreadyActive) activeStats.add(stat);
+      updatePickerTitle();
+      renderGraph();
+    });
+    row.appendChild(chip);
+  });
+
+  const moreBtn = document.createElement("button");
+  moreBtn.id = "qchip-more-btn";
+  const cnt = activeStats.size;
+  moreBtn.className = "qchip qchip-more" + (cnt > 0 ? " active" : "");
+  moreBtn.innerHTML = `···<span class="qchip-cnt" id="qchip-cnt" style="display:${cnt > 0 ? "flex" : "none"}">${cnt}</span>`;
+  moreBtn.title = "All stat filters";
+  moreBtn.addEventListener("click", () => _picker.classList.contains("open") ? closePicker() : openPicker());
+  row.appendChild(moreBtn);
+}
+
+function showFilterHint() {
+  if (localStorage.getItem("xpath-filter-seen")) return;
+  const btn = document.getElementById("qchip-more-btn");
+  if (!btn) return;
+  btn.classList.add("hint-pulse");
+  const tip = document.createElement("div");
+  tip.id = "filter-hint-tip";
+  tip.textContent = "More stat filters";
+  btn.style.position = "relative";
+  btn.appendChild(tip);
+  function dismiss() {
+    localStorage.setItem("xpath-filter-seen", "1");
+    btn.classList.remove("hint-pulse");
+    tip.remove();
+    document.removeEventListener("click", dismiss, true);
+  }
+  setTimeout(() => document.addEventListener("click", dismiss, true), 700);
 }
 
 /* ── panel drawer ── */
@@ -759,9 +859,8 @@ document.getElementById("fit-btn").addEventListener("click", () => {
 /* ── stat picker ── */
 const _picker = document.getElementById("stat-picker");
 const _pickerBd = document.getElementById("stat-picker-backdrop");
-function openPicker()  { _picker.classList.add("open");    _pickerBd.classList.add("open");    document.getElementById("filter-btn").classList.add("active"); }
-function closePicker() { _picker.classList.remove("open"); _pickerBd.classList.remove("open"); document.getElementById("filter-btn").classList.remove("active"); }
-document.getElementById("filter-btn").addEventListener("click", () => _picker.classList.contains("open") ? closePicker() : openPicker());
+function openPicker()  { _picker.classList.add("open");    _pickerBd.classList.add("open"); }
+function closePicker() { _picker.classList.remove("open"); _pickerBd.classList.remove("open"); }
 document.getElementById("stat-picker-done").addEventListener("click", closePicker);
 _pickerBd.addEventListener("click", closePicker);
 document.getElementById("stat-picker-clear").addEventListener("click", () => {
